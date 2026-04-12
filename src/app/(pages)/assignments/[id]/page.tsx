@@ -10,6 +10,7 @@ import type {
 import StatusPill from "@/components/StatusPill";
 import ScoreBar from "@/components/ScoreBar";
 import StatCard from "@/components/StatCard";
+import SubmissionUpload from "@/components/SubmissionUpload";
 import { useGradeStream } from "@/hooks/useGradeStream";
 
 export default function TriagePage() {
@@ -20,6 +21,7 @@ export default function TriagePage() {
   const [assignment, setAssignment] = useState<AssignmentResponse | null>(null);
   const [submissions, setSubmissions] = useState<SubmissionListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUpload, setShowUpload] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -102,6 +104,13 @@ export default function TriagePage() {
     );
   }
 
+  const handleUploadComplete = useCallback(
+    (newSubmissions: SubmissionListItem[]) => {
+      setSubmissions((prev) => [...prev, ...newSubmissions]);
+    },
+    []
+  );
+
   if (loading || !assignment) {
     return (
       <div className="max-w-6xl mx-auto px-6 py-8">
@@ -129,6 +138,26 @@ export default function TriagePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
+      {/* Upload component */}
+      {showUpload ? (
+        <div className="mb-4">
+          <SubmissionUpload
+            assignmentId={assignmentId}
+            onUploadComplete={handleUploadComplete}
+          />
+        </div>
+      ) : (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setShowUpload(true)}
+            className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+          >
+            + Add more submissions
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
