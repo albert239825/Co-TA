@@ -1,0 +1,26 @@
+Problem 1: Fibonacci Variants
+
+I think the formula is F(n) = F(n-1) + F(n-2), with F(0) = 0 and F(1) = 1.
+
+def fib(n):
+    if n <= 0: return 0
+    if n == 1: return 1
+    return fib(n-1) + fib(n-2)
+
+This is the standard Fibonacci. It runs in O(2^n) time because each call branches into two recursive calls. I didn't use memoization.
+
+Problem 2: Coin Change
+
+I used a greedy approach: always pick the largest coin that fits.
+
+def greedy_coins(amount):
+    coins = [25, 10, 5, 1]
+    count = 0
+    for c in coins:
+        count += amount // c
+        amount = amount % c
+    return count
+
+For example, for 67 cents: 2 quarters (50), 1 dime (10), 1 nickel (5), 2 pennies (2) = 6 coins.
+
+This gives the minimum number of coins because we always use the biggest denomination first.

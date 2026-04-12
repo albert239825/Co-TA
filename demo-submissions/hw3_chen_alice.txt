@@ -1,0 +1,39 @@
+Problem 1: Fibonacci Variants
+
+The recurrence is F(n) = F(n-1) + F(n-2) + F(n-3), with base cases F(0) = 0, F(1) = 0, F(2) = 1.
+
+I use a bottom-up DP approach. I create an array dp of size n+1, set the base cases, then fill from index 3 upward:
+
+def tribonacci(n):
+    if n <= 1: return 0
+    if n == 2: return 1
+    dp = [0] * (n + 1)
+    dp[2] = 1
+    for i in range(3, n + 1):
+        dp[i] = dp[i-1] + dp[i-2] + dp[i-3]
+    return dp[n]
+
+Time complexity: O(n) — we iterate once from 3 to n.
+Space complexity: O(n) — for the dp array (could be reduced to O(1) with three rolling variables).
+
+Problem 2: Coin Change
+
+Given coins = [1, 5, 10, 25], find the minimum number of coins to make change for amount n.
+
+DP formulation:
+- State: dp[i] = minimum number of coins to make amount i
+- Base case: dp[0] = 0
+- Transition: dp[i] = min(dp[i - c] + 1) for each coin c where c <= i
+
+def min_coins(n, coins=[1, 5, 10, 25]):
+    dp = [float('inf')] * (n + 1)
+    dp[0] = 0
+    for i in range(1, n + 1):
+        for c in coins:
+            if c <= i:
+                dp[i] = min(dp[i], dp[i - c] + 1)
+    return dp[n] if dp[n] != float('inf') else -1
+
+Proof of optimality: The DP solution is optimal because it considers every possible last coin choice at each amount and picks the minimum. By the principle of optimal substructure, if dp[n] uses coin c as the last coin, then dp[n-c] must also be optimal. Since we check all coins at every step, we guarantee the global minimum.
+
+Edge cases: If n = 0, return 0 (no coins needed). If dp[n] remains infinity, the amount is impossible — return -1.

@@ -1,0 +1,36 @@
+Problem 1: Fibonacci Variants
+
+This is a Tribonacci sequence: F(n) = F(n-1) + F(n-2) + F(n-3).
+Base cases: F(0) = 0, F(1) = 0, F(2) = 1.
+
+I use a DP table approach with O(1) space by keeping only three rolling variables:
+
+def tribonacci(n):
+    if n == 0 or n == 1: return 0
+    if n == 2: return 1
+    a, b, c = 0, 0, 1
+    for _ in range(3, n + 1):
+        a, b, c = b, c, a + b + c
+    return c
+
+Time complexity: O(n) — single pass from 3 to n.
+Space complexity: O(1) — only three variables maintained.
+
+Problem 2: Coin Change
+
+DP solution:
+- dp[0] = 0
+- For i from 1 to n: dp[i] = 1 + min(dp[i - c]) for each valid coin c <= i
+- If dp[n] is still infinity, return -1 (impossible).
+
+def min_coins(n):
+    coins = [1, 5, 10, 25]
+    dp = [float('inf')] * (n + 1)
+    dp[0] = 0
+    for i in range(1, n + 1):
+        for c in coins:
+            if c <= i and dp[i - c] + 1 < dp[i]:
+                dp[i] = dp[i - c] + 1
+    return dp[n] if dp[n] != float('inf') else -1
+
+Edge cases handled: n=0 returns 0, impossible amounts return -1.
