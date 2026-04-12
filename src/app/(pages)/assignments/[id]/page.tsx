@@ -80,7 +80,7 @@ export default function TriagePage() {
       // Backend not ready — use mock stream
     }
 
-    startStream(`/api/grade/stream?assignmentId=${assignmentId}`);
+    startStream(`mock://grade/stream?assignmentId=${assignmentId}`);
   }
 
   function handleExport() {
