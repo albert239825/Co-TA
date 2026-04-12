@@ -170,7 +170,7 @@ export interface MarkReviewedResponse {
 
 // ─── Export ─────────────────────────────────────────────────
 
-export interface ExportRequest {
+export interface ExportQueryParams {
   assignmentId: string;
   format: "csv"; // extensible later
 }
@@ -181,19 +181,17 @@ export interface ExportRequest {
 // ─── AI grading prompt types ────────────────────────────────
 //
 // These define what we send to / receive from OpenAI.
+// Grading is done per-problem: one LLM call per (submission, problem) pair.
 // The grading API route transforms between these and the DB types.
+// Segmentation of submission text into per-problem chunks is handled
+// upstream (student selection or AI splitting — TBD).
 
-export interface GradePromptInput {
+export interface GradeProblemPromptInput {
   assignmentDescription: string;
-  problems: GradePromptProblem[];
-  submissionText: string;
-}
-
-export interface GradePromptProblem {
-  problemId: string;
   problemName: string;
   problemDescription: string;
   criteria: GradePromptCriterion[];
+  submissionText: string; // the relevant chunk for this problem
 }
 
 export interface GradePromptCriterion {
@@ -202,8 +200,8 @@ export interface GradePromptCriterion {
   points: number;
 }
 
-// what the LLM returns (JSON mode)
-export interface GradePromptOutput {
+// what the LLM returns (JSON mode) — scores for one problem's criteria
+export interface GradeProblemPromptOutput {
   scores: GradePromptCriterionResult[];
 }
 

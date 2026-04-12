@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // ─── Assignments ────────────────────────────────────────────
@@ -99,7 +99,9 @@ export const gradingResults = sqliteTable("grading_results", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  uniqueSubmission: uniqueIndex("grading_results_submission_id_unique").on(table.submissionId),
+}));
 
 // ─── Criterion scores ───────────────────────────────────────
 
@@ -123,7 +125,12 @@ export const criterionScores = sqliteTable("criterion_scores", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  uniqueCriterionPerResult: uniqueIndex("criterion_scores_result_criterion_unique").on(
+    table.gradingResultId,
+    table.criterionId,
+  ),
+}));
 
 // ─── Type exports (inferred from schema) ────────────────────
 

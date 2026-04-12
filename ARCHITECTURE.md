@@ -35,23 +35,9 @@ Notes: creates assignment + problems + criteria in a single transaction.
 `GET /api/assignments/[id]`
 Returns: `AssignmentResponse`
 
-### Problems
-
-`GET /api/assignments/[id]/problems`
-Returns: `ProblemResponse[]`
-
-`POST /api/assignments/[id]/problems`
-Body: `CreateProblemInput`
-Returns: `ProblemResponse` (201)
-
-### Criteria
-
-`GET /api/problems/[id]/criteria`
-Returns: `CriterionResponse[]`
-
-`POST /api/problems/[id]/criteria`
-Body: `CreateCriterionInput`
-Returns: `CriterionResponse` (201)
+`DELETE /api/assignments/[id]`
+Returns: 204 No Content
+Notes: cascades to problems, criteria, submissions, grading results, and scores.
 
 ### Submissions
 
@@ -80,9 +66,11 @@ Body: `BatchGradeRequest`
 Returns: `BatchGradeResponse`
 Notes:
 - If submissionIds is empty, grades all "pending" submissions for the assignment.
-- For each submission: set status to "grading", call OpenAI, create grading_result
-  and criterion_scores rows, set status to "graded".
-- Use `Promise.allSettled` to parallelize. On failure, reset status to "pending".
+- For each submission: set status to "grading", call OpenAI per-problem
+  (one LLM call per problem using `GradeProblemPromptInput`), create
+  grading_result and criterion_scores rows, set status to "graded".
+- Use `Promise.allSettled` with `p-limit` concurrency (max ~5 parallel).
+  On failure, reset status to "pending".
 - Emit SSE events as each submission completes.
 
 `GET /api/grade/stream?assignmentId=[id]`
@@ -152,6 +140,10 @@ Use a simple in-memory event emitter. The batch grading handler emits events
 as each submission completes. The SSE route subscribes to the emitter for
 the given assignmentId and forwards events to the client.
 
+**Cleanup:** When the SSE connection closes (client disconnects), remove the
+event listener to prevent memory leaks. Use the `cancel()` callback on the
+`ReadableStream` to call `gradeEvents.removeListener(...)`.
+
 ```typescript
 // shared singleton (e.g. lib/events.ts)
 import { EventEmitter } from "events";
@@ -161,7 +153,19 @@ export const gradeEvents = new EventEmitter();
 gradeEvents.emit(`grade:${assignmentId}`, event);
 
 // in SSE route:
-gradeEvents.on(`grade:${assignmentId}`, (event) => {
+const handler = (event) => {
   controller.enqueue(`data: ${JSON.stringify(event)}\n\n`);
-});
+};
+gradeEvents.on(`grade:${assignmentId}`, handler);
+
+// cleanup on disconnect:
+// in ReadableStream cancel() callback:
+gradeEvents.removeListener(`grade:${assignmentId}`, handler);
 ```
+
+## Concurrency limiting
+
+Use `p-limit` (or equivalent) to cap parallel OpenAI calls at ~5 concurrent
+requests per batch. This avoids hitting OpenAI rate limits when grading
+large batches. Each submission's problems are graded sequentially within
+the submission, but submissions are processed concurrently up to the limit.
