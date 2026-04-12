@@ -23,35 +23,35 @@ export async function POST(request: Request) {
 
     const problemResponses: ProblemResponse[] = [];
 
-    await db.transaction(async (tx) => {
-      await tx.insert(schema.assignments).values({
+    db.transaction((tx) => {
+      tx.insert(schema.assignments).values({
         id: assignmentId,
         name,
         description,
-      });
+      }).run();
 
       for (const prob of problems) {
         const problemId = crypto.randomUUID();
-        await tx.insert(schema.problems).values({
+        tx.insert(schema.problems).values({
           id: problemId,
           assignmentId,
           name: prob.name,
           description: prob.description,
           sortOrder: prob.sortOrder,
-        });
+        }).run();
 
         const criteriaResponses: CriterionResponse[] = [];
         let problemMaxScore = 0;
 
         for (const crit of prob.criteria) {
           const criterionId = crypto.randomUUID();
-          await tx.insert(schema.rubricCriteria).values({
+          tx.insert(schema.rubricCriteria).values({
             id: criterionId,
             problemId,
             description: crit.description,
             points: crit.points,
             sortOrder: crit.sortOrder,
-          });
+          }).run();
 
           problemMaxScore += crit.points;
           criteriaResponses.push({
