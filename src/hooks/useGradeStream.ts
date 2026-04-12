@@ -157,7 +157,7 @@ export function useGradeStream(
             submissionId: "",
             timestamp: new Date().toISOString(),
           });
-          setIsStreaming(false);
+          stopStream();
         }, delay);
         timeoutsRef.current.push(t3);
       }

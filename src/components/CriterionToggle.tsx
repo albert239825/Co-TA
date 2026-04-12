@@ -12,11 +12,11 @@ interface CriterionToggleProps {
 
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 12 12" className="w-3 h-3">
+    <svg viewBox="0 0 12 12" className="w-3 h-3 text-emerald-600 dark:text-emerald-400">
       <path
         d="M2.5 6L5 8.5L9.5 3.5"
         fill="none"
-        stroke="#16a34a"
+        stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -27,11 +27,11 @@ function CheckIcon() {
 
 function XIcon() {
   return (
-    <svg viewBox="0 0 12 12" className="w-3 h-3">
+    <svg viewBox="0 0 12 12" className="w-3 h-3 text-red-600 dark:text-red-400">
       <path
         d="M3 3L9 9M9 3L3 9"
         fill="none"
-        stroke="#dc2626"
+        stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
       />

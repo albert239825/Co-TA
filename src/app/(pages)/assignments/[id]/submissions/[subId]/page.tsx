@@ -42,6 +42,13 @@ export default function ReviewPage() {
 
   const handleToggle = useCallback(
     (criterionScoreId: string, newEarned: boolean) => {
+      // Find the criterion's point value before updating state
+      const criterion = detail.gradingResult?.problems
+        .flatMap((p) => p.criteria)
+        .find((c) => c.criterionScoreId === criterionScoreId);
+      const overrideValue = newEarned ? (criterion?.points ?? 0) : 0;
+
+      // Optimistic UI update
       setDetail((prev) => {
         if (!prev.gradingResult) return prev;
 
@@ -63,35 +70,26 @@ export default function ReviewPage() {
           };
         });
 
-        const newTotal = recomputeTotalScore(updatedProblems);
-
-        // Fire PATCH in background
-        fetch(`/api/criterion-scores/${criterionScoreId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            overrideScore: newEarned
-              ? updatedProblems
-                  .flatMap((p) => p.criteria)
-                  .find((c) => c.criterionScoreId === criterionScoreId)?.points ?? 0
-              : 0,
-          }),
-        }).catch(() => {
-          // Backend not ready — keep optimistic state
-          console.log("PATCH criterion-score (mock):", criterionScoreId);
-        });
-
         return {
           ...prev,
-          totalScore: newTotal,
+          totalScore: recomputeTotalScore(updatedProblems),
           gradingResult: {
             ...prev.gradingResult,
             problems: updatedProblems,
           },
         };
       });
+
+      // Fire PATCH in background (outside state updater)
+      fetch(`/api/criterion-scores/${criterionScoreId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overrideScore: overrideValue }),
+      }).catch(() => {
+        // Backend not ready — keep optimistic state
+      });
     },
-    []
+    [detail.gradingResult]
   );
 
   async function handleApprove() {

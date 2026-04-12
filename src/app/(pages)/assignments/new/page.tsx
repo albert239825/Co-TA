@@ -36,6 +36,7 @@ export default function NewAssignmentPage() {
   const newCriterionRef = useRef<HTMLInputElement | null>(null);
   const newProblemRef = useRef<HTMLInputElement | null>(null);
   const [focusTarget, setFocusTarget] = useState<string | null>(null);
+  const [focusProblemIdx, setFocusProblemIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (focusTarget === "problem" && newProblemRef.current) {
@@ -45,6 +46,7 @@ export default function NewAssignmentPage() {
     if (focusTarget === "criterion" && newCriterionRef.current) {
       newCriterionRef.current.focus();
       setFocusTarget(null);
+      setFocusProblemIdx(null);
     }
   }, [focusTarget, problems]);
 
@@ -82,6 +84,7 @@ export default function NewAssignmentPage() {
       criteria: [...updated[pi].criteria, { description: "", points: "" }],
     };
     setProblems(updated);
+    setFocusProblemIdx(pi);
     setFocusTarget("criterion");
   }
 
@@ -290,7 +293,7 @@ export default function NewAssignmentPage() {
                   <div key={ci} className="flex items-center gap-2 group">
                     <input
                       ref={
-                        pi === problems.length - 1 &&
+                        pi === focusProblemIdx &&
                         ci === problem.criteria.length - 1
                           ? newCriterionRef
                           : undefined
