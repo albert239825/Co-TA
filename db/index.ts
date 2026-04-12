@@ -3,8 +3,8 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
 import path from "path";
 
-const dbPath = path.join(process.cwd(), "db", "co-ta.db");
-const sqlite = new Database(dbPath);
+const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), "db", "co-ta.db");
+export const sqlite = new Database(dbPath);
 
 // Enable WAL mode for better concurrent read performance
 sqlite.pragma("journal_mode = WAL");
