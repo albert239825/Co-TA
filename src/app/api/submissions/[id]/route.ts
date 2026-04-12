@@ -97,7 +97,7 @@ export async function GET(
 
     // Compute maxScore
     let maxScore = 0;
-    for (const info of problemInfoMap.values()) {
+    for (const info of Array.from(problemInfoMap.values())) {
       maxScore += info.maxScore;
     }
 
@@ -154,7 +154,7 @@ export async function GET(
         // Build problems array for GradingResultResponse
         const problemGrades: ProblemGradeResponse[] = [];
 
-        for (const [problemId, info] of problemInfoMap) {
+        for (const [problemId, info] of Array.from(problemInfoMap.entries())) {
           const criteriaResponses: CriterionScoreResponse[] = [];
           let problemScore = 0;
 

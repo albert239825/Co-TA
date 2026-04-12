@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     const problemScores: ProblemScoreSummary[] = [];
     let totalMaxScore = 0;
-    for (const [problemId, info] of problemMap) {
+    for (const [problemId, info] of Array.from(problemMap.entries())) {
       problemScores.push({
         problemId,
         problemName: info.problemName,
