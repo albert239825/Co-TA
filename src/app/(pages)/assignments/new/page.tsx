@@ -180,8 +180,10 @@ export default function NewAssignmentPage() {
     }
   }
 
-  const inputClasses =
-    "w-full bg-transparent border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400";
+  // Criterion row uses flex; shared w-full would override w-20 on the points input.
+  const inputBaseClasses =
+    "bg-transparent border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400";
+  const inputClasses = `w-full ${inputBaseClasses}`;
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
@@ -288,7 +290,7 @@ export default function NewAssignmentPage() {
 
               <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 space-y-2">
                 {problem.criteria.map((criterion, ci) => (
-                  <div key={ci} className="flex items-center gap-2 group">
+                  <div key={ci} className="flex items-center gap-2 group min-w-0">
                     <input
                       ref={
                         pi === focusProblemIdx &&
@@ -297,7 +299,7 @@ export default function NewAssignmentPage() {
                           : undefined
                       }
                       type="text"
-                      className={`flex-1 ${inputClasses}`}
+                      className={`min-w-0 flex-1 ${inputBaseClasses}`}
                       placeholder="Criterion description"
                       value={criterion.description}
                       onChange={(e) =>
@@ -306,7 +308,7 @@ export default function NewAssignmentPage() {
                     />
                     <input
                       type="number"
-                      className={`w-20 text-right ${inputClasses}`}
+                      className={`w-20 shrink-0 text-right ${inputBaseClasses}`}
                       placeholder="Pts"
                       min="0"
                       step="1"
