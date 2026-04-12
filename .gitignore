@@ -1,2 +1,36 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+
+# env files
+.env
+.env*.local
+.envrc
+
+# debug
+npm-debug.log*
+
+# misc
 .DS_Store
+*.pem
+
+# sqlite
+*.db
+*.sqlite
+
+# turbo
+.turbo
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
 
