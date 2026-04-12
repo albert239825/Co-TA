@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { mockAssignments, mockSubmissions } from "@/lib/mock-data";
+import type { AssignmentResponse, SubmissionListItem } from "@/contracts/types";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -11,8 +12,54 @@ function timeAgo(dateStr: string): string {
   return `${days} days ago`;
 }
 
+interface AssignmentWithStats extends AssignmentResponse {
+  totalCount: number;
+  gradedCount: number;
+}
+
 export default function AssignmentsPage() {
-  const assignments = mockAssignments;
+  const [assignments, setAssignments] = useState<AssignmentWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch("/api/assignments");
+        if (!res.ok) throw new Error("Failed to fetch assignments");
+        const data: AssignmentResponse[] = await res.json();
+
+        const withStats = await Promise.all(
+          data.map(async (a) => {
+            try {
+              const subRes = await fetch(`/api/assignments/${a.id}/submissions`);
+              if (!subRes.ok) return { ...a, totalCount: 0, gradedCount: 0 };
+              const subs: SubmissionListItem[] = await subRes.json();
+              const gradedCount = subs.filter(
+                (s) => s.status === "graded" || s.status === "reviewed"
+              ).length;
+              return { ...a, totalCount: subs.length, gradedCount };
+            } catch {
+              return { ...a, totalCount: 0, gradedCount: 0 };
+            }
+          })
+        );
+        setAssignments(withStats);
+      } catch {
+        // leave empty
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <p className="text-zinc-400 text-sm">Loading assignments...</p>
+      </div>
+    );
+  }
 
   if (assignments.length === 0) {
     return (
@@ -34,11 +81,6 @@ export default function AssignmentsPage() {
       </div>
     );
   }
-
-  const gradedCount = mockSubmissions.filter(
-    (s) => s.status === "graded" || s.status === "reviewed"
-  ).length;
-  const totalCount = mockSubmissions.length;
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
@@ -86,20 +128,22 @@ export default function AssignmentsPage() {
                 </Link>
               </td>
               <td className="py-3 pr-4 text-zinc-500">
-                {totalCount} submissions
+                {a.totalCount} submissions
               </td>
               <td className="py-3 pr-4">
                 <span className="text-zinc-600 dark:text-zinc-300">
-                  {gradedCount}/{totalCount} graded
+                  {a.gradedCount}/{a.totalCount} graded
                 </span>
-                <div className="h-[3px] w-24 rounded-full bg-zinc-200 dark:bg-zinc-700 mt-1">
-                  <div
-                    className="h-full rounded-full bg-emerald-500"
-                    style={{
-                      width: `${(gradedCount / totalCount) * 100}%`,
-                    }}
-                  />
-                </div>
+                {a.totalCount > 0 && (
+                  <div className="h-[3px] w-24 rounded-full bg-zinc-200 dark:bg-zinc-700 mt-1">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{
+                        width: `${(a.gradedCount / a.totalCount) * 100}%`,
+                      }}
+                    />
+                  </div>
+                )}
               </td>
               <td className="py-3 text-zinc-400">{timeAgo(a.createdAt)}</td>
             </tr>

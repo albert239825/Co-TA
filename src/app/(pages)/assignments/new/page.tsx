@@ -173,10 +173,8 @@ export default function NewAssignmentPage() {
       }
       const created = await res.json();
       router.push(`/assignments/${created.id}`);
-    } catch {
-      // Fallback for when backend isn't ready
-      console.log("POST /api/assignments payload:", request);
-      router.push(`/assignments/${mockAssignmentId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create assignment");
     } finally {
       setSubmitting(false);
     }
@@ -373,5 +371,3 @@ export default function NewAssignmentPage() {
     </div>
   );
 }
-
-const mockAssignmentId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";

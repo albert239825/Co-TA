@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { mockSubmissionDetail } from "@/lib/mock-data";
 import type {
   SubmissionDetailResponse,
   ProblemGradeResponse,
@@ -28,29 +27,44 @@ export default function ReviewPage() {
   const assignmentId = params.id as string;
   const subId = params.subId as string;
 
-  const [detail, setDetail] = useState<SubmissionDetailResponse>(
-    mockSubmissionDetail
-  );
+  const [detail, setDetail] = useState<SubmissionDetailResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [regrading, setRegrading] = useState(false);
 
-  const problems = detail.gradingResult?.problems ?? [];
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch(`/api/submissions/${subId}`);
+        if (res.ok) setDetail(await res.json());
+      } catch {
+        // leave null
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [subId]);
 
-  const totalScore = detail.gradingResult
+  const problems = detail?.gradingResult?.problems ?? [];
+
+  const totalScore = detail?.gradingResult
     ? recomputeTotalScore(detail.gradingResult.problems)
-    : detail.totalScore;
+    : detail?.totalScore ?? 0;
 
   const handleToggle = useCallback(
     (criterionScoreId: string, newEarned: boolean) => {
+      if (!detail?.gradingResult) return;
+
       // Find the criterion's point value before updating state
-      const criterion = detail.gradingResult?.problems
+      const criterion = detail.gradingResult.problems
         .flatMap((p) => p.criteria)
         .find((c) => c.criterionScoreId === criterionScoreId);
       const overrideValue = newEarned ? (criterion?.points ?? 0) : 0;
 
       // Optimistic UI update
       setDetail((prev) => {
-        if (!prev.gradingResult) return prev;
+        if (!prev?.gradingResult) return prev;
 
         const updatedProblems = prev.gradingResult.problems.map((problem) => {
           const updatedCriteria = problem.criteria.map((c) => {
@@ -86,21 +100,17 @@ export default function ReviewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ overrideScore: overrideValue }),
       }).catch(() => {
-        // Backend not ready — keep optimistic state
+        // Keep optimistic state on failure
       });
     },
-    [detail.gradingResult]
+    [detail?.gradingResult]
   );
 
   async function handleApprove() {
     setApproving(true);
-    try {
-      await fetch(`/api/submissions/${subId}/review`, {
-        method: "PATCH",
-      });
-    } catch {
-      console.log("PATCH review (mock):", subId);
-    }
+    await fetch(`/api/submissions/${subId}/review`, {
+      method: "PATCH",
+    });
     // Navigate back to triage
     router.push(`/assignments/${assignmentId}`);
   }
@@ -123,11 +133,17 @@ export default function ReviewPage() {
           setDetail(await detailRes.json());
         }
       }
-    } catch {
-      console.log("Re-grade (mock):", subId);
     } finally {
       setRegrading(false);
     }
+  }
+
+  if (loading || !detail) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <p className="text-zinc-400 text-sm">Loading submission...</p>
+      </div>
+    );
   }
 
   return (

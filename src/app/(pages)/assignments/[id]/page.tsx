@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import {
-  mockAssignment,
-  mockSubmissions,
-} from "@/lib/mock-data";
-import type { SubmissionListItem, GradeStreamEvent } from "@/contracts/types";
+import type {
+  AssignmentResponse,
+  SubmissionListItem,
+  GradeStreamEvent,
+} from "@/contracts/types";
 import StatusPill from "@/components/StatusPill";
 import ScoreBar from "@/components/ScoreBar";
 import StatCard from "@/components/StatCard";
@@ -16,8 +16,28 @@ export default function TriagePage() {
   const router = useRouter();
   const params = useParams();
   const assignmentId = params.id as string;
-  const assignment = mockAssignment;
-  const [submissions, setSubmissions] = useState<SubmissionListItem[]>(mockSubmissions);
+
+  const [assignment, setAssignment] = useState<AssignmentResponse | null>(null);
+  const [submissions, setSubmissions] = useState<SubmissionListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [aRes, sRes] = await Promise.all([
+          fetch(`/api/assignments/${assignmentId}`),
+          fetch(`/api/assignments/${assignmentId}/submissions`),
+        ]);
+        if (aRes.ok) setAssignment(await aRes.json());
+        if (sRes.ok) setSubmissions(await sRes.json());
+      } catch {
+        // leave defaults
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [assignmentId]);
 
   const updateSubmission = useCallback(
     (subId: string, updater: (s: SubmissionListItem) => SubmissionListItem) => {
@@ -64,28 +84,29 @@ export default function TriagePage() {
 
     if (pendingIds.length === 0) return;
 
-    try {
-      const res = await fetch("/api/grade/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignmentId, submissionIds: pendingIds }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        startStream(data.streamUrl);
-        return;
-      }
-    } catch {
-      // Backend not ready — use mock stream
+    const res = await fetch("/api/grade/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignmentId, submissionIds: pendingIds }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      startStream(data.streamUrl);
     }
-
-    startStream(`mock://grade/stream?assignmentId=${assignmentId}`);
   }
 
   function handleExport() {
     window.open(
       `/api/export?assignmentId=${assignmentId}&format=csv`,
       "_blank"
+    );
+  }
+
+  if (loading || !assignment) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <p className="text-zinc-400 text-sm">Loading...</p>
+      </div>
     );
   }
 
