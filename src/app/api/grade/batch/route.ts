@@ -135,17 +135,43 @@ async function gradeSubmissions(
   submissions: SubmissionRow[],
   problemsWithCriteria: ProblemWithCriteria[]
 ) {
-  // Dynamic import p-limit (ESM-only package)
-  const pLimit = (await import("p-limit")).default;
-  const limit = pLimit(5);
+  // Inline concurrency limiter (replaces p-limit which uses Node.js
+  // subpath imports incompatible with Next.js webpack)
+  const MAX_CONCURRENT = 5;
+  const results: Promise<void>[] = [];
+  let active = 0;
+  let idx = 0;
 
-  const tasks = submissions.map((submission) =>
-    limit(() =>
-      gradeOneSubmission(assignmentId, submission, problemsWithCriteria)
-    )
-  );
+  await new Promise<void>((resolveAll) => {
+    if (submissions.length === 0) {
+      resolveAll();
+      return;
+    }
 
-  await Promise.allSettled(tasks);
+    function next() {
+      while (active < MAX_CONCURRENT && idx < submissions.length) {
+        const submission = submissions[idx++];
+        active++;
+        const p = gradeOneSubmission(
+          assignmentId,
+          submission,
+          problemsWithCriteria
+        ).finally(() => {
+          active--;
+          if (idx < submissions.length) {
+            next();
+          } else if (active === 0) {
+            resolveAll();
+          }
+        });
+        results.push(p);
+      }
+    }
+
+    next();
+  });
+
+  await Promise.allSettled(results);
 
   // Emit batch_complete event
   const completeEvent: GradeStreamEvent = {
