@@ -1,5 +1,7 @@
 # Architecture
 
+For local setup and commands, see the root [README.md](README.md).
+
 ## Stack
 - Next.js 14, App Router
 - SQLite + Drizzle ORM (`better-sqlite3` driver)
