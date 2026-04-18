@@ -37,13 +37,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Precedence: explicit request modelId > assignment.selectedModelId >
-    // DEFAULT_MODEL_ID. The zod schema has already validated that any
-    // supplied id is in the registry, so the resolved id here is safe to
-    // persist to gradingResults.modelUsed.
-    const resolvedModelId =
-      requestModelId ?? assignment.selectedModelId ?? DEFAULT_MODEL_ID;
-
     // Get problems + criteria for this assignment (ordered)
     const problems = db
       .select()
@@ -89,6 +82,14 @@ export async function POST(request: Request) {
         .all();
     }
 
+    // Precedence: explicit request modelId > assignment.selectedModelId >
+    // DEFAULT_MODEL_ID. The zod schema has already validated that any
+    // supplied id is in the registry, so the resolved id here is safe to
+    // persist to gradingResults.modelUsed and to hand to the grader
+    // dispatcher.
+    const effectiveModelId =
+      requestModelId ?? assignment.selectedModelId ?? DEFAULT_MODEL_ID;
+
     const started = submissionsToGrade.length;
     const streamUrl = `/api/grade/stream?assignmentId=${assignmentId}`;
 
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
       assignmentId,
       submissionsToGrade,
       problemsWithCriteria,
-      resolvedModelId,
+      effectiveModelId,
     );
 
     return NextResponse.json(
@@ -300,6 +301,7 @@ async function gradeOneSubmission(
             criterionId: cs.criterionId,
             earned: cs.earned,
             aiFeedback: cs.aiFeedback,
+            needsReview: cs.needsReview,
           })
           .run();
       }

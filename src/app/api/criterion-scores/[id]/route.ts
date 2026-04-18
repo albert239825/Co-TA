@@ -36,9 +36,11 @@ export async function PATCH(
     // sent so partial PATCHes don't clobber existing values.
     const updates: Partial<typeof schema.criterionScores.$inferInsert> = {
       overrideScore,
-      taComment: taComment ?? null,
       updatedAt: new Date(),
     };
+    if (taComment !== undefined) {
+      updates.taComment = taComment ?? null;
+    }
     if (typeof needsReview === "boolean") {
       updates.needsReview = needsReview;
     }
