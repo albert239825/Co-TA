@@ -6,6 +6,7 @@ import { batchGradeRequestSchema, parseBody } from "../../../../../lib/validatio
 import { gradeProblem } from "../../../../../lib/grading";
 import { emitGradeEvent } from "../../../../../lib/events";
 import { computeEffectiveScore } from "../../../../../lib/scores";
+import { DEFAULT_MODEL_ID } from "../../../../../contracts/models";
 import type {
   BatchGradeResponse,
   GradeStreamEvent,
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
     const parsed = await parseBody(request, batchGradeRequestSchema);
     if (parsed.error) return parsed.error;
 
-    const { assignmentId, submissionIds } = parsed.data;
+    const { assignmentId, submissionIds, modelId: requestModelId } = parsed.data;
 
     // Verify assignment exists
     const assignment = db
@@ -81,12 +82,16 @@ export async function POST(request: Request) {
         .all();
     }
 
+    // Resolve model fallback chain: request override → assignment setting → default
+    const effectiveModelId =
+      requestModelId ?? assignment.selectedModelId ?? DEFAULT_MODEL_ID;
+
     const started = submissionsToGrade.length;
     const streamUrl = `/api/grade/stream?assignmentId=${assignmentId}`;
 
     // Fire-and-forget: kick off grading in background
     // We don't await this — the client uses SSE to track progress
-    gradeSubmissions(assignmentId, submissionsToGrade, problemsWithCriteria);
+    gradeSubmissions(assignmentId, submissionsToGrade, problemsWithCriteria, effectiveModelId);
 
     return NextResponse.json(
       { started, streamUrl } satisfies BatchGradeResponse,
@@ -133,7 +138,8 @@ interface SubmissionRow {
 async function gradeSubmissions(
   assignmentId: string,
   submissions: SubmissionRow[],
-  problemsWithCriteria: ProblemWithCriteria[]
+  problemsWithCriteria: ProblemWithCriteria[],
+  modelId: string
 ) {
   // Inline concurrency limiter (replaces p-limit which uses Node.js
   // subpath imports incompatible with Next.js webpack)
@@ -155,7 +161,8 @@ async function gradeSubmissions(
         const p = gradeOneSubmission(
           assignmentId,
           submission,
-          problemsWithCriteria
+          problemsWithCriteria,
+          modelId
         ).finally(() => {
           active--;
           if (idx < submissions.length) {
@@ -185,7 +192,8 @@ async function gradeSubmissions(
 async function gradeOneSubmission(
   assignmentId: string,
   submission: SubmissionRow,
-  problemsWithCriteria: ProblemWithCriteria[]
+  problemsWithCriteria: ProblemWithCriteria[],
+  modelId: string
 ) {
   try {
     // 1. Set status to "grading"
@@ -244,7 +252,7 @@ async function gradeOneSubmission(
         submissionText: submission.fileContent,
       };
 
-      const output = await gradeProblem(promptInput);
+      const output = await gradeProblem(promptInput, modelId);
 
       // Collect results for DB insertion. When the grader flags a criterion
       // for manual review, clamp earned=false so the score defaults to 0
@@ -271,7 +279,7 @@ async function gradeOneSubmission(
         .values({
           id: gradingResultId,
           submissionId: submission.id,
-          modelUsed: "gpt-4o",
+          modelUsed: modelId,
           gradedAt,
         })
         .run();

@@ -20,12 +20,16 @@ const USE_REAL_GRADING = process.env.USE_REAL_GRADING === "true";
 /**
  * Grade a single problem for a submission.
  * Returns scores for each criterion in the problem.
+ *
+ * @param modelId – the resolved model id (from the fallback chain). The stub
+ *   ignores it; the real path passes it to the provider API.
  */
 export async function gradeProblem(
-  input: GradeProblemPromptInput
+  input: GradeProblemPromptInput,
+  modelId: string
 ): Promise<GradeProblemPromptOutput> {
   if (USE_REAL_GRADING) {
-    return gradeProblemWithOpenAI(input);
+    return gradeProblemWithOpenAI(input, modelId);
   }
   return gradeProblemStub(input);
 }
@@ -58,10 +62,12 @@ function gradeProblemStub(
 
 /**
  * Real OpenAI implementation — placeholder for when prompts/grade.ts lands.
- * Will use GPT-4o in JSON mode to grade the submission against the rubric.
+ * Uses the caller-supplied model id so the pluggable-model fallback chain is
+ * respected end-to-end.
  */
 async function gradeProblemWithOpenAI(
-  input: GradeProblemPromptInput
+  input: GradeProblemPromptInput,
+  modelId: string
 ): Promise<GradeProblemPromptOutput> {
   // Dynamic import to avoid loading OpenAI when using stub
   const { default: OpenAI } = await import("openai");
@@ -94,7 +100,7 @@ ${input.criteria.map((c) => `- [${c.criterionId}] ${c.description} (${c.points} 
 ${input.submissionText}`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: modelId,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: systemPrompt },
