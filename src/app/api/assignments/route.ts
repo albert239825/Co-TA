@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const parsed = await parseBody(request, createAssignmentSchema);
     if (parsed.error) return parsed.error;
 
-    const { name, description, problems } = parsed.data;
+    const { name, description, problems, selectedModelId } = parsed.data;
 
     const assignmentId = crypto.randomUUID();
     let totalMaxScore = 0;
@@ -28,6 +28,7 @@ export async function POST(request: Request) {
         id: assignmentId,
         name,
         description,
+        selectedModelId: selectedModelId ?? null,
       }).run();
 
       for (const prob of problems) {
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
       name,
       description,
       maxScore: totalMaxScore,
+      selectedModelId: selectedModelId ?? null,
       problems: problemResponses,
       createdAt: created!.createdAt.toISOString(),
     };
@@ -156,6 +158,7 @@ export async function GET() {
         name: assignment.name,
         description: assignment.description,
         maxScore: assignmentMaxScore,
+        selectedModelId: assignment.selectedModelId ?? null,
         problems: problemResponses,
         createdAt: assignment.createdAt.toISOString(),
       });

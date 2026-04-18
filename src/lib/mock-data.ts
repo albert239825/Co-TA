@@ -59,6 +59,7 @@ export const mockAssignment: AssignmentResponse = {
   description:
     "This assignment covers the mathematical foundations of backpropagation, stochastic gradient descent, and regularization techniques in neural network training.",
   maxScore: 28,
+  selectedModelId: null,
   problems: [
     {
       id: PROBLEM_IDS.q1,
@@ -328,6 +329,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
               "Student correctly wrote L = -log(softmax(z)_y) and identified the components.",
             overrideScore: null,
             taComment: null,
+            needsReview: false,
             effectiveScore: 3,
           },
           {
@@ -341,6 +343,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
               "Used quotient rule on softmax directly rather than decomposing via chain rule through log(sum(exp)). Final answer is correct but derivation skips the required chain rule step.",
             overrideScore: null,
             taComment: null,
+            needsReview: false,
             effectiveScore: 0,
           },
           {
@@ -354,6 +357,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
               "Both cases shown and correct, but derivation path is incomplete since chain rule was skipped.",
             overrideScore: 2,
             taComment: "Final answers are correct, awarding full credit.",
+            needsReview: false,
             effectiveScore: 2,
           },
         ],
@@ -375,6 +379,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
             aiFeedback: "Correct: w_{t+1} = w_t - eta * grad L(w_t).",
             overrideScore: null,
             taComment: null,
+            needsReview: false,
             effectiveScore: 3,
           },
           {
@@ -387,6 +392,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
               "Both velocity accumulation and weight update steps correct with beta parameter.",
             overrideScore: null,
             taComment: null,
+            needsReview: false,
             effectiveScore: 4,
           },
           {
@@ -400,6 +406,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
               "Provided the decay formula but did not explain why decay is needed for convergence or connect to Robbins-Monro conditions.",
             overrideScore: null,
             taComment: null,
+            needsReview: false,
             effectiveScore: 0,
           },
         ],
@@ -421,6 +428,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
             aiFeedback: "Correctly wrote L_reg = L + (lambda/2)||w||^2.",
             overrideScore: null,
             taComment: null,
+            needsReview: false,
             effectiveScore: 2,
           },
           {
@@ -433,6 +441,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
             aiFeedback: "Derivation is clean and correct.",
             overrideScore: null,
             taComment: null,
+            needsReview: false,
             effectiveScore: 3,
           },
           {
@@ -446,6 +455,7 @@ export const mockSubmissionDetail: SubmissionDetailResponse = {
               "Mentions large weights are penalized but does not connect to weight decay update rule w=(1-eta*lambda)*w - eta*grad L nor explain bias-variance tradeoff.",
             overrideScore: null,
             taComment: null,
+            needsReview: false,
             effectiveScore: 0,
           },
         ],

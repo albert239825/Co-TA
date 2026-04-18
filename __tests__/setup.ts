@@ -6,6 +6,7 @@ sqlite.exec(`
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT NOT NULL,
+    selected_model_id TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
   );
@@ -61,6 +62,7 @@ sqlite.exec(`
     ai_feedback TEXT NOT NULL,
     override_score INTEGER,
     ta_comment TEXT,
+    needs_review INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
   );

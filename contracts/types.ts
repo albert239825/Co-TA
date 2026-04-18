@@ -16,6 +16,7 @@ export interface CreateAssignmentRequest {
   name: string;
   description: string; // the full assignment prompt
   problems: CreateProblemInput[]; // create rubric in one shot
+  selectedModelId?: string | null; // optional: overrides default model for this assignment
 }
 
 export interface CreateProblemInput {
@@ -36,8 +37,19 @@ export interface AssignmentResponse {
   name: string;
   description: string;
   maxScore: number; // computed: sum of all criteria points
+  selectedModelId: string | null; // persisted per-assignment model choice (null = use default)
   problems: ProblemResponse[];
   createdAt: string; // ISO 8601
+}
+
+// Partial update for per-assignment settings (currently just model selection).
+export interface UpdateAssignmentRequest {
+  selectedModelId?: string | null;
+}
+
+export interface UpdateAssignmentResponse {
+  id: string;
+  selectedModelId: string | null;
 }
 
 export interface ProblemResponse {
@@ -91,6 +103,9 @@ export interface ProblemScoreSummary {
 export interface BatchGradeRequest {
   assignmentId: string;
   submissionIds: string[]; // which submissions to grade (or all if empty)
+  // Optional per-run override. If omitted, backend falls back to the
+  // assignment's selectedModelId, then to DEFAULT_MODEL_ID.
+  modelId?: string;
 }
 
 export interface BatchGradeResponse {
@@ -147,12 +162,19 @@ export interface CriterionScoreResponse {
   aiFeedback: string;
   overrideScore: number | null;
   taComment: string | null;
+  // Binary confidence flag emitted by the grader. When true, the UI
+  // renders a yellow "needs manual review" state and the criterion
+  // defaults to earned=false until the TA reviews it.
+  needsReview: boolean;
   effectiveScore: number; // computed: overrideScore ?? (earned ? points : 0)
 }
 
 export interface UpdateCriterionScoreRequest {
   overrideScore: number | null; // null to clear override and accept AI
   taComment?: string | null;
+  // Optional: TA can explicitly clear/set the needs-review flag.
+  // Server ignores if the caller didn't send the field.
+  needsReview?: boolean;
 }
 
 export interface UpdateCriterionScoreResponse {
@@ -209,6 +231,9 @@ export interface GradePromptCriterionResult {
   criterionId: string;
   earned: boolean;
   feedback: string; // specific to the student's work, not generic
+  // Optional: grader may emit a binary confidence flag. When true,
+  // the backend persists needs_review=true and clamps earned=false.
+  needsReview?: boolean;
 }
 
 // ─── Error shape ────────────────────────────────────────────
@@ -216,4 +241,20 @@ export interface GradePromptCriterionResult {
 export interface ApiError {
   error: string;
   details?: string;
+}
+
+// ─── Model registry ─────────────────────────────────────────
+
+export type ModelProvider = "openai" | "anthropic" | "stub";
+
+export interface ModelInfo {
+  id: string; // stable machine id, e.g. "claude-sonnet-4-6"
+  provider: ModelProvider;
+  displayName: string; // user-facing name for the picker UI
+  description: string; // one-liner shown under the displayName
+}
+
+export interface ListModelsResponse {
+  models: ModelInfo[];
+  defaultModelId: string;
 }

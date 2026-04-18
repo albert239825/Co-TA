@@ -221,6 +221,7 @@ async function gradeOneSubmission(
       criterionId: string;
       earned: boolean;
       aiFeedback: string;
+      needsReview: boolean;
     }[] = [];
 
     // Get the assignment description for the prompt
@@ -245,14 +246,18 @@ async function gradeOneSubmission(
 
       const output = await gradeProblem(promptInput);
 
-      // Collect results for DB insertion
+      // Collect results for DB insertion. When the grader flags a criterion
+      // for manual review, clamp earned=false so the score defaults to 0
+      // until a TA reviews it.
       for (const score of output.scores) {
+        const needsReview = score.needsReview ?? false;
         allCriterionScoreInserts.push({
           id: crypto.randomUUID(),
           gradingResultId: "", // filled after grading_result insert
           criterionId: score.criterionId,
-          earned: score.earned,
+          earned: needsReview ? false : score.earned,
           aiFeedback: score.feedback,
+          needsReview,
         });
       }
     }
