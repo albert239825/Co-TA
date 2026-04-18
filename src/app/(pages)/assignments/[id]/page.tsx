@@ -11,6 +11,7 @@ import StatusPill from "@/components/StatusPill";
 import ScoreBar from "@/components/ScoreBar";
 import StatCard from "@/components/StatCard";
 import SubmissionUpload from "@/components/SubmissionUpload";
+import ModelPicker from "@/components/ModelPicker";
 import { useGradeStream } from "@/hooks/useGradeStream";
 
 export default function TriagePage() {
@@ -22,6 +23,8 @@ export default function TriagePage() {
   const [submissions, setSubmissions] = useState<SubmissionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(true);
+  const [modelSaving, setModelSaving] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -94,6 +97,34 @@ export default function TriagePage() {
     if (res.ok) {
       const data = await res.json();
       startStream(data.streamUrl);
+    }
+  }
+
+  async function handleModelChange(newModelId: string | null) {
+    if (!assignment) return;
+    // Optimistic update so the popover trigger label refreshes immediately.
+    const previous = assignment.selectedModelId;
+    setAssignment({ ...assignment, selectedModelId: newModelId });
+    setModelSaving(true);
+    setModelError(null);
+    try {
+      const res = await fetch(`/api/assignments/${assignmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedModelId: newModelId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.details || body.error || `HTTP ${res.status}`);
+      }
+    } catch (err) {
+      // Roll back the optimistic update so UI matches server state.
+      setAssignment((prev) =>
+        prev ? { ...prev, selectedModelId: previous } : prev,
+      );
+      setModelError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setModelSaving(false);
     }
   }
 
@@ -192,6 +223,18 @@ export default function TriagePage() {
         >
           Export CSV
         </button>
+        <div className="ml-auto flex items-center gap-2">
+          {modelError && (
+            <span className="text-[11px] text-red-600 dark:text-red-400">
+              Failed to save model: {modelError}
+            </span>
+          )}
+          <ModelPicker
+            selectedModelId={assignment.selectedModelId}
+            onChange={handleModelChange}
+            disabled={modelSaving || isStreaming}
+          />
+        </div>
       </div>
 
       {/* Triage table */}
