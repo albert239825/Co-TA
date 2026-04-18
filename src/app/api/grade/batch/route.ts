@@ -37,6 +37,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // Precedence: explicit request modelId > assignment.selectedModelId >
+    // DEFAULT_MODEL_ID. The zod schema has already validated that any
+    // supplied id is in the registry, so the resolved id here is safe to
+    // persist to gradingResults.modelUsed.
+    const resolvedModelId =
+      requestModelId ?? assignment.selectedModelId ?? DEFAULT_MODEL_ID;
+
     // Get problems + criteria for this assignment (ordered)
     const problems = db
       .select()
@@ -91,7 +98,12 @@ export async function POST(request: Request) {
 
     // Fire-and-forget: kick off grading in background
     // We don't await this — the client uses SSE to track progress
-    gradeSubmissions(assignmentId, submissionsToGrade, problemsWithCriteria, effectiveModelId);
+    gradeSubmissions(
+      assignmentId,
+      submissionsToGrade,
+      problemsWithCriteria,
+      effectiveModelId,
+    );
 
     return NextResponse.json(
       { started, streamUrl } satisfies BatchGradeResponse,
@@ -139,7 +151,7 @@ async function gradeSubmissions(
   assignmentId: string,
   submissions: SubmissionRow[],
   problemsWithCriteria: ProblemWithCriteria[],
-  modelId: string
+  modelId: string,
 ) {
   // Inline concurrency limiter (replaces p-limit which uses Node.js
   // subpath imports incompatible with Next.js webpack)
@@ -162,7 +174,7 @@ async function gradeSubmissions(
           assignmentId,
           submission,
           problemsWithCriteria,
-          modelId
+          modelId,
         ).finally(() => {
           active--;
           if (idx < submissions.length) {
@@ -193,7 +205,7 @@ async function gradeOneSubmission(
   assignmentId: string,
   submission: SubmissionRow,
   problemsWithCriteria: ProblemWithCriteria[],
-  modelId: string
+  modelId: string,
 ) {
   try {
     // 1. Set status to "grading"
