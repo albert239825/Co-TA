@@ -208,6 +208,7 @@ export default function ReviewPage() {
                     earned={criterion.earned}
                     aiFeedback={criterion.aiFeedback}
                     overrideScore={criterion.overrideScore}
+                    needsReview={criterion.needsReview}
                     onToggle={handleToggle}
                   />
                 ))}
