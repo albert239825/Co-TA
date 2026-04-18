@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import type {
@@ -31,6 +31,14 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [regrading, setRegrading] = useState(false);
+  // Set of criterionScoreIds that the TA overrode but didn't comment on.
+  // Populated on Approve click; cleared when the TA starts typing a comment
+  // or toggles the row back to matching the AI (not an override anymore).
+  const [missingCommentIds, setMissingCommentIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [approveError, setApproveError] = useState<string | null>(null);
+  const missingRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     async function load() {
@@ -94,11 +102,20 @@ export default function ReviewPage() {
         };
       });
 
+      // Preserve existing taComment across toggles: the PATCH handler on
+      // `main` today treats a missing taComment field as "set to null",
+      // which would clobber any comment the TA has already typed. We
+      // always send the current value.
+      const existingComment = criterion?.taComment ?? null;
+
       // Fire PATCH in background (outside state updater)
       fetch(`/api/criterion-scores/${criterionScoreId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ overrideScore: overrideValue }),
+        body: JSON.stringify({
+          overrideScore: overrideValue,
+          taComment: existingComment,
+        }),
       }).catch(() => {
         // Keep optimistic state on failure
       });
@@ -106,7 +123,85 @@ export default function ReviewPage() {
     [detail?.gradingResult]
   );
 
+  const handleCommentChange = useCallback(
+    (criterionScoreId: string, newComment: string) => {
+      const trimmed = newComment.trim();
+
+      // Clear the "missing" highlight once the TA starts actually typing.
+      if (trimmed.length > 0) {
+        setMissingCommentIds((prev) => {
+          if (!prev.has(criterionScoreId)) return prev;
+          const next = new Set(prev);
+          next.delete(criterionScoreId);
+          return next;
+        });
+      }
+
+      setDetail((prev) => {
+        if (!prev?.gradingResult) return prev;
+        const updatedProblems = prev.gradingResult.problems.map((problem) => ({
+          ...problem,
+          criteria: problem.criteria.map((c) =>
+            c.criterionScoreId === criterionScoreId
+              ? { ...c, taComment: trimmed.length > 0 ? trimmed : null }
+              : c,
+          ),
+        }));
+        return {
+          ...prev,
+          gradingResult: { ...prev.gradingResult, problems: updatedProblems },
+        };
+      });
+
+      // Find the current overrideScore so the PATCH doesn't unset it.
+      const criterion = detail?.gradingResult?.problems
+        .flatMap((p) => p.criteria)
+        .find((c) => c.criterionScoreId === criterionScoreId);
+      const overrideScore = criterion?.overrideScore ?? null;
+
+      fetch(`/api/criterion-scores/${criterionScoreId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          overrideScore,
+          taComment: trimmed.length > 0 ? trimmed : null,
+        }),
+      }).catch(() => {
+        // Keep optimistic state on failure
+      });
+    },
+    [detail?.gradingResult],
+  );
+
   async function handleApprove() {
+    // Deferred validation: block Approve if any overridden criterion is
+    // missing a comment. Mark them, scroll to the first offender, and
+    // surface a banner so the TA knows what to fix.
+    const missing: string[] = [];
+    for (const problem of problems) {
+      for (const c of problem.criteria) {
+        if (c.overrideScore !== null && !(c.taComment ?? "").trim()) {
+          missing.push(c.criterionScoreId);
+        }
+      }
+    }
+
+    if (missing.length > 0) {
+      setMissingCommentIds(new Set(missing));
+      setApproveError(
+        `Add a comment for ${missing.length} overridden ${
+          missing.length === 1 ? "criterion" : "criteria"
+        } before approving.`,
+      );
+      const firstEl = missingRefs.current.get(missing[0]);
+      if (firstEl) {
+        firstEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
+    setApproveError(null);
+    setMissingCommentIds(new Set());
     setApproving(true);
     await fetch(`/api/submissions/${subId}/review`, {
       method: "PATCH",
@@ -200,20 +295,47 @@ export default function ReviewPage() {
               </div>
               <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {problem.criteria.map((criterion) => (
-                  <CriterionToggle
+                  <div
                     key={criterion.criterionScoreId}
-                    criterionScoreId={criterion.criterionScoreId}
-                    description={criterion.description}
-                    points={criterion.points}
-                    earned={criterion.earned}
-                    aiFeedback={criterion.aiFeedback}
-                    overrideScore={criterion.overrideScore}
-                    onToggle={handleToggle}
-                  />
+                    ref={(el) => {
+                      if (el) {
+                        missingRefs.current.set(
+                          criterion.criterionScoreId,
+                          el,
+                        );
+                      } else {
+                        missingRefs.current.delete(criterion.criterionScoreId);
+                      }
+                    }}
+                  >
+                    <CriterionToggle
+                      criterionScoreId={criterion.criterionScoreId}
+                      description={criterion.description}
+                      points={criterion.points}
+                      earned={criterion.earned}
+                      aiFeedback={criterion.aiFeedback}
+                      overrideScore={criterion.overrideScore}
+                      taComment={criterion.taComment}
+                      onToggle={handleToggle}
+                      onCommentChange={handleCommentChange}
+                      missingComment={missingCommentIds.has(
+                        criterion.criterionScoreId,
+                      )}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
           ))}
+
+          {approveError && (
+            <div
+              role="alert"
+              className="mt-4 px-3 py-2 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-sm text-red-700 dark:text-red-300"
+            >
+              {approveError}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-2 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
