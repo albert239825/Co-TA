@@ -316,6 +316,7 @@ export default function ReviewPage() {
                       aiFeedback={criterion.aiFeedback}
                       overrideScore={criterion.overrideScore}
                       taComment={criterion.taComment}
+                      needsReview={criterion.needsReview}
                       onToggle={handleToggle}
                       onCommentChange={handleCommentChange}
                       missingComment={missingCommentIds.has(
