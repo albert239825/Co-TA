@@ -14,6 +14,7 @@ import type {
   GradeProblemPromptOutput,
   GradePromptCriterionResult,
 } from "../contracts/types";
+import { DEFAULT_MODEL_ID } from "../contracts/models";
 
 const USE_REAL_GRADING = process.env.USE_REAL_GRADING === "true";
 
@@ -21,12 +22,12 @@ const USE_REAL_GRADING = process.env.USE_REAL_GRADING === "true";
  * Grade a single problem for a submission.
  * Returns scores for each criterion in the problem.
  *
- * @param modelId – the resolved model id (from the fallback chain). The stub
- *   ignores it; the real path passes it to the provider API.
+ * @param modelId – optional model id override. Falls back to DEFAULT_MODEL_ID
+ *   when omitted. The stub ignores it; the real path passes it to the provider API.
  */
 export async function gradeProblem(
   input: GradeProblemPromptInput,
-  modelId: string
+  modelId: string = DEFAULT_MODEL_ID
 ): Promise<GradeProblemPromptOutput> {
   if (USE_REAL_GRADING) {
     return gradeProblemWithOpenAI(input, modelId);
