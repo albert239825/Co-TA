@@ -114,20 +114,27 @@ export default function NewAssignmentPage() {
   }
 
   function validate(): string | null {
+    // Mirror the server-side zod schema in lib/validation.ts so we surface
+    // specific messages before the POST rather than a generic "Validation
+    // failed" 400.
     if (!name.trim()) return "Assignment name is required.";
+    if (!description.trim()) return "Assignment prompt is required.";
     if (problems.length === 0) return "At least one problem is required.";
     for (let i = 0; i < problems.length; i++) {
       const p = problems[i];
+      const label = p.name.trim() || `Problem ${i + 1}`;
       if (!p.name.trim()) return `Problem ${i + 1} needs a name.`;
+      if (!p.description.trim())
+        return `Problem "${label}" needs a description.`;
       if (p.criteria.length === 0)
-        return `Problem "${p.name}" needs at least one criterion.`;
+        return `Problem "${label}" needs at least one criterion.`;
       for (let j = 0; j < p.criteria.length; j++) {
         const c = p.criteria[j];
         if (!c.description.trim())
-          return `Problem "${p.name}", criterion ${j + 1} needs a description.`;
+          return `Problem "${label}", criterion ${j + 1} needs a description.`;
         const pts = parseFloat(c.points);
         if (!pts || pts <= 0)
-          return `Problem "${p.name}", criterion ${j + 1} needs points > 0.`;
+          return `Problem "${label}", criterion ${j + 1} needs points > 0.`;
       }
     }
     return null;
@@ -168,8 +175,22 @@ export default function NewAssignmentPage() {
         body: JSON.stringify(request),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create assignment");
+        // Server returns { error: string, details?: string }. The details
+        // field holds the specific zod failure reason — surface it so
+        // TAs see "Assignment description is required" instead of the
+        // generic "Validation failed".
+        let errorMessage = "Failed to create assignment";
+        try {
+          const data = await res.json();
+          if (data?.details) {
+            errorMessage = `${data.error ?? "Validation failed"}: ${data.details}`;
+          } else if (data?.error) {
+            errorMessage = data.error;
+          }
+        } catch {
+          // Non-JSON error body — fall through to the default message.
+        }
+        throw new Error(errorMessage);
       }
       const created = await res.json();
       router.push(`/assignments/${created.id}`);
