@@ -6,6 +6,7 @@ import type {
   UploadSubmissionsRequest,
 } from "@/contracts/types";
 import { extractStudentNames } from "@/lib/name-extractor";
+import { extractText, UnsupportedFileTypeError } from "@/lib/file-extract";
 
 interface SubmissionUploadProps {
   assignmentId: string;
@@ -18,11 +19,18 @@ interface FileEntry {
   content: string;
   fileName: string;
   studentName: string;
+  /**
+   * Non-fatal warnings surfaced by the extractor (e.g. "no text extracted
+   * from PDF— may be a scanned image"). Shown next to the entry so a TA
+   * can eyeball-verify before upload.
+   */
+  extractionWarnings: string[];
 }
 
 type UploadState = "idle" | "review" | "done";
 
-const ACCEPTED_EXTENSIONS = ".txt,.pdf,.py,.java,.cpp,.c,.js,.ts,.md";
+const ACCEPTED_EXTENSIONS =
+  ".txt,.pdf,.docx,.py,.java,.cpp,.c,.js,.ts,.md";
 
 export default function SubmissionUpload({
   assignmentId,
@@ -41,31 +49,63 @@ export default function SubmissionUpload({
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
 
-    const readPromises = fileArray.map(
-      (file) =>
-        new Promise<{ file: File; content: string }>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve({ file, content: reader.result as string });
-          reader.onerror = () => resolve({ file, content: "" });
-          reader.readAsText(file);
-        })
+    // Extract in parallel but keep per-file errors isolated. A corrupt PDF
+    // should not take down the batch — the row just shows the error and the
+    // TA can remove it before uploading.
+    const readResults = await Promise.all(
+      fileArray.map(async (file) => {
+        try {
+          const result = await extractText(file);
+          return {
+            file,
+            content: result.text,
+            warnings: result.warnings,
+            error: null as string | null,
+          };
+        } catch (err) {
+          const message =
+            err instanceof UnsupportedFileTypeError
+              ? err.message
+              : err instanceof Error
+                ? err.message
+                : String(err);
+          return {
+            file,
+            content: "",
+            warnings: [],
+            error: message,
+          };
+        }
+      }),
     );
 
-    const results = await Promise.all(readPromises);
-    const fileNames = results.map((r) => r.file.name);
-    const extracted = extractStudentNames(fileNames);
+    const fileNames = readResults.map((r) => r.file.name);
+    const extractedNames = extractStudentNames(fileNames);
 
-    const newEntries: FileEntry[] = results.map((r, i) => ({
+    const newEntries: FileEntry[] = readResults.map((r, i) => ({
       id: crypto.randomUUID(),
       file: r.file,
       content: r.content,
       fileName: r.file.name,
-      studentName: extracted[i].studentName,
+      studentName: extractedNames[i].studentName,
+      extractionWarnings: r.error
+        ? [r.error, ...r.warnings]
+        : r.warnings,
     }));
 
-    setPatternDetected(extracted.length > 0 ? extracted[0].patternDetected : null);
+    setPatternDetected(
+      extractedNames.length > 0 ? extractedNames[0].patternDetected : null,
+    );
     setEntries(newEntries);
-    setUploadError(null);
+
+    // Aggregate failures into the top-level banner so a TA uploading 50
+    // files doesn't have to scan every row to know something's off.
+    const failed = readResults.filter((r) => r.error).length;
+    setUploadError(
+      failed > 0
+        ? `${failed} file${failed === 1 ? "" : "s"} could not be read. Remove them or re-save in a supported format before uploading.`
+        : null,
+    );
     setState("review");
   }, []);
 
@@ -133,12 +173,25 @@ export default function SubmissionUpload({
   }, []);
 
   const handleUploadAll = useCallback(async () => {
+    // Skip rows that had fatal extraction errors — their content is empty
+    // and sending them would just produce junk grades. The row banner
+    // already tells the TA what's happening.
+    const uploadable = entries.filter(
+      (e) => !e.extractionWarnings.some((w) => w.startsWith("Cannot extract")),
+    );
+    if (uploadable.length === 0) {
+      setUploadError(
+        "No uploadable files. Remove or replace the failed entries and try again.",
+      );
+      return;
+    }
+
     setUploading(true);
     setUploadError(null);
 
     const body: UploadSubmissionsRequest = {
       assignmentId,
-      files: entries.map((e) => ({
+      files: uploadable.map((e) => ({
         studentIdentifier: e.studentName,
         fileName: e.fileName,
         fileContent: e.content,
@@ -158,7 +211,7 @@ export default function SubmissionUpload({
       }
 
       const data: SubmissionListItem[] = await res.json();
-      setUploadedCount(entries.length);
+      setUploadedCount(uploadable.length);
       setState("done");
       onUploadComplete(data);
     } catch (err) {
@@ -212,7 +265,7 @@ export default function SubmissionUpload({
             Drop student submissions here
           </p>
           <p className="text-xs text-zinc-400 mt-1">
-            PDF, TXT, or code files. Names auto-extracted from filenames.
+            PDF, DOCX, TXT, or code files. Names auto-extracted from filenames.
           </p>
 
           <button
@@ -284,44 +337,68 @@ export default function SubmissionUpload({
         </div>
 
         {/* File rows */}
-        {entries.map((entry, idx) => (
-          <div
-            key={entry.id}
-            className="group grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_28px] gap-2.5 items-center px-4 py-2 border-b border-zinc-100 dark:border-zinc-800"
-          >
-            <span className="text-[11px] text-zinc-400 font-mono text-right">
-              {idx + 1}
-            </span>
-            <span className="text-xs text-zinc-500 font-mono truncate">
-              {entry.fileName}
-            </span>
-            <input
-              type="text"
-              value={entry.studentName}
-              onChange={(e) => handleNameChange(entry.id, e.target.value)}
-              className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-900 dark:focus:border-white outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => handleRemove(entry.id)}
-              className="opacity-0 group-hover:opacity-70 flex items-center justify-center rounded transition-opacity"
+        {entries.map((entry, idx) => {
+          const hasFatalError = entry.extractionWarnings.some((w) =>
+            w.startsWith("Cannot extract"),
+          );
+          const hasWarnings = entry.extractionWarnings.length > 0;
+          return (
+            <div
+              key={entry.id}
+              className={`group grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_28px] gap-2.5 items-start px-4 py-2 border-b border-zinc-100 dark:border-zinc-800 ${
+                hasFatalError ? "bg-red-50/60 dark:bg-red-950/20" : ""
+              }`}
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-zinc-500"
+              <span className="text-[11px] text-zinc-400 font-mono text-right pt-1.5">
+                {idx + 1}
+              </span>
+              <div className="min-w-0">
+                <span className="text-xs text-zinc-500 font-mono truncate block">
+                  {entry.fileName}
+                </span>
+                {hasWarnings && (
+                  <ul
+                    className={`mt-1 space-y-0.5 text-[11px] ${
+                      hasFatalError
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-amber-700 dark:text-amber-300"
+                    }`}
+                  >
+                    {entry.extractionWarnings.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <input
+                type="text"
+                value={entry.studentName}
+                onChange={(e) => handleNameChange(entry.id, e.target.value)}
+                disabled={hasFatalError}
+                className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-900 dark:focus:border-white outline-none disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemove(entry.id)}
+                className="opacity-0 group-hover:opacity-70 flex items-center justify-center rounded transition-opacity mt-1"
               >
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        ))}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-zinc-500"
+                >
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          );
+        })}
 
         {/* Footer */}
         <div className="bg-zinc-50 dark:bg-zinc-800/50 px-4 py-3 flex justify-between items-center border-t border-zinc-200 dark:border-zinc-800">
