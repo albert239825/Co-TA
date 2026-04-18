@@ -284,6 +284,7 @@ async function gradeOneSubmission(
             criterionId: cs.criterionId,
             earned: cs.earned,
             aiFeedback: cs.aiFeedback,
+            needsReview: cs.needsReview,
           })
           .run();
       }
