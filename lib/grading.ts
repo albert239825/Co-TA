@@ -32,19 +32,34 @@ export async function gradeProblem(
   modelId: string = DEFAULT_MODEL_ID
 ): Promise<GradeProblemPromptOutput> {
   if (USE_REAL_GRADING) {
+    // Resolve against the registry. If the caller passed an id we no longer
+    // recognise (e.g. the model was dropped from the registry while an
+    // assignment still references it), surface an explicit error rather than
+    // silently forwarding the stale id to the OpenAI API — that produced
+    // obscure "model not found" responses.
     const model = getModelById(modelId);
-    const provider = model?.provider ?? "openai";
+    if (!model) {
+      throw new Error(
+        `Unknown model "${modelId}" — not present in the model registry. ` +
+          `It may have been removed from contracts/models.ts.`,
+      );
+    }
 
-    switch (provider) {
+    switch (model.provider) {
       case "openai":
-        return gradeProblemWithOpenAI(input, modelId);
+        return gradeProblemWithOpenAI(input, model.id);
       case "anthropic":
         // TODO: implement Anthropic adapter in Feature C child PR
         throw new Error(
-          `Anthropic provider not yet implemented. Model "${modelId}" cannot be used for grading until the Anthropic adapter is added.`
+          `Anthropic provider not yet implemented. Model "${model.id}" cannot be used for grading until the Anthropic adapter is added.`,
         );
-      default:
-        throw new Error(`Unknown provider "${provider}" for model "${modelId}"`);
+      default: {
+        const _exhaustive: never = model.provider;
+        void _exhaustive;
+        throw new Error(
+          `Unknown provider "${model.provider}" for model "${model.id}"`,
+        );
+      }
     }
   }
   return gradeProblemStub(input);

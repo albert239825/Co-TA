@@ -45,7 +45,7 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS grading_results (
     id TEXT PRIMARY KEY,
     submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
-    model_used TEXT NOT NULL DEFAULT 'gpt-4o',
+    model_used TEXT NOT NULL DEFAULT 'gpt-5-mini',
     graded_at INTEGER,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
