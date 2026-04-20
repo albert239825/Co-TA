@@ -93,7 +93,7 @@ export const gradingResults = sqliteTable("grading_results", {
   submissionId: text("submission_id")
     .notNull()
     .references(() => submissions.id, { onDelete: "cascade" }),
-  modelUsed: text("model_used").notNull().default("gpt-4o"),
+  modelUsed: text("model_used").notNull().default("gpt-5-mini"),
   gradedAt: integer("graded_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
