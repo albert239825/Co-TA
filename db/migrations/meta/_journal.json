@@ -15,6 +15,13 @@
       "when": 1776487929220,
       "tag": "0001_hot_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776664955447,
+      "tag": "0002_wonderful_molecule_man",
+      "breakpoints": true
     }
   ]
 }
