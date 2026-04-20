@@ -3,10 +3,11 @@
 // This module provides the grading function that processes a single
 // (submission, problem) pair. It ships with a stub implementation
 // that returns deterministic mock results in the correct
-// GradeProblemPromptOutput shape. The real OpenAI path will be
-// toggled in when prompts/grade.ts lands from the orchestrator.
+// GradeProblemPromptOutput shape. When USE_REAL_GRADING=true, the
+// model's provider field routes to the correct API client (OpenAI
+// implemented; Anthropic adapter coming in Feature C child PR).
 //
-// Toggle: set USE_REAL_GRADING=true env var to use OpenAI.
+// Toggle: set USE_REAL_GRADING=true env var to use real LLM APIs.
 // ─────────────────────────────────────────────────────────────────
 
 import type {
@@ -14,7 +15,7 @@ import type {
   GradeProblemPromptOutput,
   GradePromptCriterionResult,
 } from "../contracts/types";
-import { DEFAULT_MODEL_ID } from "../contracts/models";
+import { DEFAULT_MODEL_ID, getModelById } from "../contracts/models";
 
 const USE_REAL_GRADING = process.env.USE_REAL_GRADING === "true";
 
@@ -23,14 +24,28 @@ const USE_REAL_GRADING = process.env.USE_REAL_GRADING === "true";
  * Returns scores for each criterion in the problem.
  *
  * @param modelId – optional model id override. Falls back to DEFAULT_MODEL_ID
- *   when omitted. The stub ignores it; the real path passes it to the provider API.
+ *   when omitted. The stub ignores it; the real path routes to the correct
+ *   provider based on the model registry.
  */
 export async function gradeProblem(
   input: GradeProblemPromptInput,
   modelId: string = DEFAULT_MODEL_ID
 ): Promise<GradeProblemPromptOutput> {
   if (USE_REAL_GRADING) {
-    return gradeProblemWithOpenAI(input, modelId);
+    const model = getModelById(modelId);
+    const provider = model?.provider ?? "openai";
+
+    switch (provider) {
+      case "openai":
+        return gradeProblemWithOpenAI(input, modelId);
+      case "anthropic":
+        // TODO: implement Anthropic adapter in Feature C child PR
+        throw new Error(
+          `Anthropic provider not yet implemented. Model "${modelId}" cannot be used for grading until the Anthropic adapter is added.`
+        );
+      default:
+        throw new Error(`Unknown provider "${provider}" for model "${modelId}"`);
+    }
   }
   return gradeProblemStub(input);
 }

@@ -22,7 +22,7 @@ export const MODELS: readonly ModelInfo[] = [
     id: "gpt-5-mini",
     provider: "openai",
     displayName: "GPT-5 mini",
-    description: "Fast, cheap OpenAI model. Good for bulk grading.",
+    description: "Fast, cheap OpenAI model. Good for bulk grading. Recommended default.",
   },
   {
     id: "claude-opus-4-7",
@@ -34,7 +34,7 @@ export const MODELS: readonly ModelInfo[] = [
     id: "claude-sonnet-4-6",
     provider: "anthropic",
     displayName: "Claude Sonnet 4.6",
-    description: "Balanced quality + cost. Recommended default.",
+    description: "Balanced quality + cost.",
   },
   {
     id: "claude-haiku-4-5",
@@ -45,7 +45,7 @@ export const MODELS: readonly ModelInfo[] = [
 ] as const;
 
 /** The model id used when an assignment has no explicit selection. */
-export const DEFAULT_MODEL_ID = "claude-sonnet-4-6";
+export const DEFAULT_MODEL_ID = "gpt-5-mini";
 
 /** Set of valid model ids — used by zod validation. */
 export const MODEL_IDS: readonly string[] = MODELS.map((m) => m.id);
