@@ -6,7 +6,7 @@ import { batchGradeRequestSchema, parseBody } from "../../../../../lib/validatio
 import { gradeProblem } from "../../../../../lib/grading";
 import { emitGradeEvent } from "../../../../../lib/events";
 import { computeEffectiveScore } from "../../../../../lib/scores";
-import { DEFAULT_MODEL_ID } from "../../../../../contracts/models";
+import { DEFAULT_MODEL_ID, getModelById } from "../../../../../contracts/models";
 import type {
   BatchGradeResponse,
   GradeStreamEvent,
@@ -83,12 +83,21 @@ export async function POST(request: Request) {
     }
 
     // Precedence: explicit request modelId > assignment.selectedModelId >
-    // DEFAULT_MODEL_ID. The zod schema has already validated that any
-    // supplied id is in the registry, so the resolved id here is safe to
-    // persist to gradingResults.modelUsed and to hand to the grader
-    // dispatcher.
+    // DEFAULT_MODEL_ID.
+    //
+    // `requestModelId` is validated by the zod schema before we get here, so
+    // we trust it. `assignment.selectedModelId` was validated at save time
+    // but could have gone stale (a model might have been removed from the
+    // registry after the assignment was saved). Re-check it here — if it's
+    // stale, fall through to DEFAULT_MODEL_ID so the id we persist to
+    // gradingResults.modelUsed matches the id the dispatcher will actually
+    // hit (the dispatcher also falls back to DEFAULT for unknown ids).
+    const validatedAssignmentModelId =
+      assignment.selectedModelId && getModelById(assignment.selectedModelId)
+        ? assignment.selectedModelId
+        : null;
     const effectiveModelId =
-      requestModelId ?? assignment.selectedModelId ?? DEFAULT_MODEL_ID;
+      requestModelId ?? validatedAssignmentModelId ?? DEFAULT_MODEL_ID;
 
     const started = submissionsToGrade.length;
     const streamUrl = `/api/grade/stream?assignmentId=${assignmentId}`;
