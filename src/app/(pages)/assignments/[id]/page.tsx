@@ -26,6 +26,7 @@ export default function TriagePage() {
   const [showUpload, setShowUpload] = useState(true);
   const [modelSaving, setModelSaving] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
+  const [gradeProgress, setGradeProgress] = useState({ done: 0, total: 0 });
 
   useEffect(() => {
     async function load() {
@@ -70,9 +71,10 @@ export default function TriagePage() {
         totalScore: event.totalScore ?? s.totalScore,
         problemScores: event.problemScores ?? s.problemScores,
       }));
+      setGradeProgress((prev) => ({ ...prev, done: prev.done + 1 }));
     },
     onBatchComplete: () => {
-      // Stats recalculated automatically from submissions state
+      setGradeProgress({ done: 0, total: 0 });
     },
     onError: (event: GradeStreamEvent) => {
       console.error("Grading error:", event.error);
@@ -80,6 +82,7 @@ export default function TriagePage() {
         ...s,
         status: "pending",
       }));
+      setGradeProgress((prev) => ({ ...prev, done: prev.done + 1 }));
     },
   });
 
@@ -89,6 +92,8 @@ export default function TriagePage() {
       .map((s) => s.id);
 
     if (pendingIds.length === 0) return;
+
+    setGradeProgress({ done: 0, total: pendingIds.length });
 
     const res = await fetch("/api/grade/batch", {
       method: "POST",
@@ -216,7 +221,9 @@ export default function TriagePage() {
           disabled={isStreaming}
           className="bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
         >
-          {isStreaming ? "Grading..." : "Grade all pending"}
+          {isStreaming
+            ? `Grading\u2026 (${gradeProgress.done}/${gradeProgress.total})`
+            : "Grade all pending"}
         </button>
         <Link
           href={`/assignments/${assignmentId}/edit`}
