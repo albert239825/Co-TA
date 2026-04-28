@@ -4,7 +4,7 @@ import { db } from "../../../../../db";
 import * as schema from "../../../../../db/schema";
 import { batchGradeRequestSchema, parseBody } from "../../../../../lib/validation";
 import { gradeProblem } from "../../../../../lib/grading";
-import { emitGradeEvent } from "../../../../../lib/events";
+import { emitGradeEvent, clearGradeEventBuffer } from "../../../../../lib/events";
 import { computeEffectiveScore } from "../../../../../lib/scores";
 import { DEFAULT_MODEL_ID, getModelById } from "../../../../../contracts/models";
 import type {
@@ -160,6 +160,9 @@ async function gradeSubmissions(
   problemsWithCriteria: ProblemWithCriteria[],
   modelId: string,
 ) {
+  // Clear stale event buffer so a re-run doesn't replay old events.
+  clearGradeEventBuffer(assignmentId);
+
   // Inline concurrency limiter (replaces p-limit which uses Node.js
   // subpath imports incompatible with Next.js webpack)
   const MAX_CONCURRENT = 5;
