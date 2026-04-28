@@ -88,10 +88,11 @@ export function onGradeEvent(
 
   gradeEvents.on(key, wrappedHandler);
 
+  let timer: ReturnType<typeof setTimeout> | undefined;
   if (toReplay.length > 0) {
     // Deliver buffered events on the next tick so the stream
     // transport (HTTP response) is ready to flush data.
-    setTimeout(() => {
+    timer = setTimeout(() => {
       for (const event of toReplay) {
         handler(event);
       }
@@ -104,5 +105,6 @@ export function onGradeEvent(
 
   return () => {
     gradeEvents.removeListener(key, wrappedHandler);
+    if (timer !== undefined) clearTimeout(timer);
   };
 }
