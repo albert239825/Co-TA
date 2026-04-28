@@ -54,8 +54,12 @@ export function emitGradeEvent(
 
 /**
  * Type-safe subscription to grading events for a specific assignment.
- * Any buffered events are replayed synchronously before live events
- * begin, so the subscriber never misses an event.
+ *
+ * Buffered events are replayed **asynchronously** (via setTimeout) so
+ * the HTTP response / ReadableStream transport is established before
+ * data is written.  Live events that arrive between subscription and
+ * replay are queued and delivered in order after the replay finishes.
+ *
  * Returns a cleanup function to remove the listener.
  */
 export function onGradeEvent(
@@ -64,16 +68,41 @@ export function onGradeEvent(
 ): () => void {
   const key = `grade:${assignmentId}`;
 
-  // Replay buffered events so the client catches up.
-  const buffered = eventBuffers.get(key);
-  if (buffered) {
-    for (const event of buffered) {
+  // Snapshot buffered events *before* subscribing so we know exactly
+  // which events to replay.
+  const snapshot = eventBuffers.get(key);
+  const toReplay = snapshot ? [...snapshot] : [];
+
+  // If there are buffered events, hold live events in a queue until
+  // the replay is delivered so ordering is preserved.
+  let replayDone = toReplay.length === 0;
+  const liveQueue: GradeStreamEvent[] = [];
+
+  const wrappedHandler = (event: GradeStreamEvent) => {
+    if (replayDone) {
       handler(event);
+    } else {
+      liveQueue.push(event);
     }
+  };
+
+  gradeEvents.on(key, wrappedHandler);
+
+  if (toReplay.length > 0) {
+    // Deliver buffered events on the next tick so the stream
+    // transport (HTTP response) is ready to flush data.
+    setTimeout(() => {
+      for (const event of toReplay) {
+        handler(event);
+      }
+      replayDone = true;
+      for (const event of liveQueue) {
+        handler(event);
+      }
+    }, 0);
   }
 
-  gradeEvents.on(key, handler);
   return () => {
-    gradeEvents.removeListener(key, handler);
+    gradeEvents.removeListener(key, wrappedHandler);
   };
 }
