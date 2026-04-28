@@ -1,0 +1,15 @@
+Problem 1: Factorial
+
+def factorial(n):
+    if n == 0 or n == 1:
+        return 1
+    return n * factorial(n - 1)
+
+Problem 2: Palindrome
+
+def is_palindrome(s):
+    s = s.lower()
+    return bool(s == s[::-1])
+
+print(is_palindrome("racecar"))  # True
+print(is_palindrome("hello"))    # False

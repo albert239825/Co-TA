@@ -1,0 +1,23 @@
+Problem 1: Factorial
+
+def factorial(n):
+    # base case
+    if n == 1:
+        return 1
+    return n * factorial(n - 1)
+
+# Works for n >= 1. Recursion stops when n reaches 1.
+
+Problem 2: Palindrome
+
+def is_palindrome(s):
+    # make lowercase to handle case insensitivity
+    normalized = s.lower().lower()
+    reversed_s = normalized[::-1]
+    if normalized == reversed_s:
+        return True
+    else:
+        return False
+
+print(is_palindrome("Racecar"))  # True
+print(is_palindrome("Hello"))    # False

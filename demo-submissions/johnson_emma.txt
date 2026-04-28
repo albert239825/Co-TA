@@ -1,0 +1,20 @@
+Problem 1: Factorial
+
+from functools import reduce
+
+def factorial(n):
+    if n == 0:
+        return 1
+    return reduce(lambda acc, x: acc * x, range(1, n + 1))
+
+# Uses reduce to multiply all integers from 1 to n.
+# Base case handles n=0 explicitly since range(1,1) is empty.
+
+Problem 2: Palindrome
+
+def is_palindrome(s):
+    s = s.lower()
+    return all(s[i] == s[-(i + 1)] for i in range(len(s) // 2))
+
+print(is_palindrome("Madam"))   # True
+print(is_palindrome("Python"))  # False
