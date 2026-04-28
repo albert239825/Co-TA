@@ -24,6 +24,10 @@ npm-debug.log*
 *.db
 *.sqlite
 
+# Database
+*.db-wal
+*.db-shm
+
 # turbo
 .turbo
 
