@@ -1,0 +1,14 @@
+Problem 1: Factorial
+
+def factorial(n):
+    if n == 0:
+        return 1
+    return n * factorial(n - 1)
+
+Problem 2: Palindrome
+
+def is_palindrome(s):
+    return s == s[::-1]
+
+print(is_palindrome("racecar"))  # True
+print(is_palindrome("Racecar"))  # False -- case not handled

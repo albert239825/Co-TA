@@ -1,0 +1,25 @@
+Problem 1: Factorial
+
+def factorial(n):
+    if n == 0:
+        return 1
+    elif n == 1:
+        return 1
+    else:
+        return n * factorial(n - 1)
+
+# Recursion works because each call brings n closer to the base case.
+# When n hits 0 or 1 we stop and unwind the call stack.
+
+Problem 2: Palindrome
+
+def is_palindrome(s):
+    s = s.lower()
+    for i in range(len(s)):
+        if s[i] != s[len(s) - 1 - i]:
+            return False
+    return True
+
+print(is_palindrome("racecar"))  # True
+print(is_palindrome("hello"))    # False
+print(is_palindrome("A"))        # True
