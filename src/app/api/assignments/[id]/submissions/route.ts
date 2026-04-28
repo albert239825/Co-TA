@@ -103,6 +103,7 @@ export async function GET(
         string,
         { earned: boolean; overrideScore: number | null }
       >();
+      let needsReviewCount = 0;
 
       if (isGraded) {
         const gradingResult = db
@@ -117,6 +118,7 @@ export async function GET(
               criterionId: schema.criterionScores.criterionId,
               earned: schema.criterionScores.earned,
               overrideScore: schema.criterionScores.overrideScore,
+              needsReview: schema.criterionScores.needsReview,
             })
             .from(schema.criterionScores)
             .where(
@@ -129,6 +131,7 @@ export async function GET(
               earned: s.earned,
               overrideScore: s.overrideScore,
             });
+            if (s.needsReview) needsReviewCount++;
           }
         }
       }
@@ -170,6 +173,7 @@ export async function GET(
         totalScore: isGraded ? totalScore : null,
         maxScore: totalMaxScore,
         problemScores,
+        needsReviewCount,
       });
     }
 

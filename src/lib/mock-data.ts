@@ -163,9 +163,11 @@ function scores(
 ): {
   totalScore: number;
   problemScores: SubmissionListItem["problemScores"];
+  needsReviewCount: number;
 } {
   return {
     totalScore: q1 + q2 + q3,
+    needsReviewCount: 0,
     problemScores: [
       {
         problemId: PROBLEM_IDS.q1,
@@ -253,6 +255,7 @@ export const mockSubmissions: SubmissionListItem[] = [
     status: "grading",
     totalScore: null,
     maxScore: 28,
+    needsReviewCount: 0,
     problemScores: [
       {
         problemId: PROBLEM_IDS.q1,
@@ -281,6 +284,7 @@ export const mockSubmissions: SubmissionListItem[] = [
     status: "pending",
     totalScore: null,
     maxScore: 28,
+    needsReviewCount: 0,
     problemScores: [],
   },
   {
@@ -290,6 +294,7 @@ export const mockSubmissions: SubmissionListItem[] = [
     status: "pending",
     totalScore: null,
     maxScore: 28,
+    needsReviewCount: 0,
     problemScores: [],
   },
 ];

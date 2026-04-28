@@ -70,6 +70,7 @@ export default function TriagePage() {
         status: "graded",
         totalScore: event.totalScore ?? s.totalScore,
         problemScores: event.problemScores ?? s.problemScores,
+        needsReviewCount: event.needsReviewCount ?? s.needsReviewCount,
       }));
       setGradeProgress((prev) => ({ ...prev, done: prev.done + 1 }));
     },
@@ -338,7 +339,14 @@ export default function TriagePage() {
                   )}
                 </td>
                 <td className="py-2.5 px-2.5">
-                  <StatusPill status={sub.status} />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <StatusPill status={sub.status} />
+                    {sub.status === "graded" && sub.needsReviewCount > 0 && (
+                      <span className="text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap">
+                        {sub.needsReviewCount === 1 ? "1 flagged" : `${sub.needsReviewCount} flagged`}
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

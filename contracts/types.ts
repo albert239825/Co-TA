@@ -120,6 +120,7 @@ export interface SubmissionListItem {
   totalScore: number | null; // null if not yet graded
   maxScore: number;
   problemScores: ProblemScoreSummary[];
+  needsReviewCount: number; // count of criteria flagged needsReview=true (0 if none)
 }
 
 export interface ProblemScoreSummary {
@@ -151,6 +152,7 @@ export interface GradeStreamEvent {
   status?: SubmissionStatus;
   totalScore?: number;
   problemScores?: ProblemScoreSummary[];
+  needsReviewCount?: number;
   error?: string;
   timestamp: string; // ISO 8601
 }

@@ -98,6 +98,7 @@ export async function POST(request: Request) {
         totalScore: null,
         maxScore: totalMaxScore,
         problemScores,
+        needsReviewCount: 0,
       });
     }
 

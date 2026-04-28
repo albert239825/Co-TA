@@ -358,6 +358,10 @@ async function gradeOneSubmission(
       totalScore += problemScore;
     }
 
+    const needsReviewCount = allCriterionScoreInserts.filter(
+      (cs) => cs.needsReview
+    ).length;
+
     // Emit score_ready event
     emitGradeEvent(assignmentId, {
       type: "score_ready",
@@ -365,6 +369,7 @@ async function gradeOneSubmission(
       status: "graded",
       totalScore,
       problemScores,
+      needsReviewCount,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
