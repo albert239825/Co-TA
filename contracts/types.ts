@@ -32,6 +32,32 @@ export interface CreateCriterionInput {
   sortOrder: number;
 }
 
+// ─── Edit assignment (full upsert) ──────────────────────────
+
+export interface EditAssignmentRequest {
+  name: string;
+  description: string;
+  selectedModelId?: string | null;
+  problems: EditProblemInput[];
+  /** When true, reset all graded/reviewed submissions back to pending. */
+  resetGrades?: boolean;
+}
+
+export interface EditProblemInput {
+  id?: string; // present → update existing; absent → create new
+  name: string;
+  description: string;
+  sortOrder: number;
+  criteria: EditCriterionInput[];
+}
+
+export interface EditCriterionInput {
+  id?: string; // present → update existing; absent → create new
+  description: string;
+  points: number;
+  sortOrder: number;
+}
+
 export interface AssignmentResponse {
   id: string;
   name: string;
@@ -50,6 +76,11 @@ export interface UpdateAssignmentRequest {
 export interface UpdateAssignmentResponse {
   id: string;
   selectedModelId: string | null;
+}
+
+export interface EditAssignmentResponse extends AssignmentResponse {
+  /** Number of submissions that were reset to pending (0 if resetGrades was false). */
+  submissionsReset: number;
 }
 
 export interface ProblemResponse {

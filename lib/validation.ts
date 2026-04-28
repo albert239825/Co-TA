@@ -43,6 +43,33 @@ export const updateAssignmentSchema = z.object({
   selectedModelId: selectedModelIdSchema,
 });
 
+const editCriterionInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  description: z.string().min(1, "Criterion description is required"),
+  points: z.number().int().min(0, "Points must be non-negative"),
+  sortOrder: z.number().int().min(0),
+});
+
+const editProblemInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1, "Problem name is required"),
+  description: z.string().min(1, "Problem description is required"),
+  sortOrder: z.number().int().min(0),
+  criteria: z
+    .array(editCriterionInputSchema)
+    .min(1, "At least one criterion is required"),
+});
+
+export const editAssignmentSchema = z.object({
+  name: z.string().min(1, "Assignment name is required"),
+  description: z.string().min(1, "Assignment description is required"),
+  selectedModelId: selectedModelIdSchema,
+  problems: z
+    .array(editProblemInputSchema)
+    .min(1, "At least one problem is required"),
+  resetGrades: z.boolean().optional(),
+});
+
 const submissionFileInputSchema = z.object({
   studentIdentifier: z.string().min(1, "Student identifier is required"),
   fileName: z.string().min(1, "File name is required"),
