@@ -30,8 +30,12 @@ describe("POST /api/grade/batch", () => {
       const data = await res.json();
       expect(data.status).toBe("graded");
       expect(data.gradingResult).not.toBeNull();
-      // Stub: P1 earns indices 0,2 (3+2=5), P2 earns index 0 (4) = total 9
-      expect(data.totalScore).toBe(9);
+      // Stub behavior:
+      //   P1 (3+5+2 pts): idx0 earned (3), idx1 not (0), idx2 earned but
+      //     flagged needsReview (every 3rd) → clamped to 0. P1 = 3.
+      //   P2 (4+6 pts): idx0 earned (4), idx1 not (0). P2 = 4.
+      //   Total = 7.
+      expect(data.totalScore).toBe(7);
     }
   });
 
@@ -103,8 +107,9 @@ describe("POST /api/grade/batch", () => {
 
     // New grading result should have a different ID
     expect(secondGrade.gradingResult.id).not.toBe(firstResultId);
-    // Score should be the same (deterministic stub)
-    expect(secondGrade.totalScore).toBe(9);
+    // Score should be the same (deterministic stub) — see the first
+    // test in this file for the breakdown of why this is 7.
+    expect(secondGrade.totalScore).toBe(7);
   });
 
   it("returns 404 for nonexistent assignment", async () => {
