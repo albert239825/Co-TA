@@ -185,13 +185,16 @@ export async function PUT(
 
     db.transaction((tx) => {
       // 1. Update assignment row
+      const assignmentUpdates: Partial<typeof schema.assignments.$inferInsert> = {
+        name,
+        description,
+        updatedAt: new Date(),
+      };
+      if (Object.prototype.hasOwnProperty.call(parsed.data, "selectedModelId")) {
+        assignmentUpdates.selectedModelId = selectedModelId ?? null;
+      }
       tx.update(schema.assignments)
-        .set({
-          name,
-          description,
-          selectedModelId: selectedModelId ?? null,
-          updatedAt: new Date(),
-        })
+        .set(assignmentUpdates)
         .where(eq(schema.assignments.id, params.id))
         .run();
 

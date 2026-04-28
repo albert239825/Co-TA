@@ -25,6 +25,7 @@ export default function EditAssignmentPage() {
   const [loading, setLoading] = useState(true);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingData, setPendingData] = useState<AssignmentFormData | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -105,7 +106,13 @@ export default function EditAssignmentPage() {
   async function handleWarningChoice(choice: ResetChoice) {
     setShowWarning(false);
     if (!pendingData || choice === null) return;
-    await submitEdit(pendingData, choice === "reset");
+    try {
+      setSaveError(null);
+      await submitEdit(pendingData, choice === "reset");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to update assignment");
+      setPendingData(null);
+    }
   }
 
   if (loading) {
@@ -163,6 +170,12 @@ export default function EditAssignmentPage() {
             make existing grades inconsistent. When you save, you&apos;ll be asked
             whether to keep or reset existing grades.
           </p>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="mb-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-4">
+          <p className="text-sm text-red-800 dark:text-red-200">{saveError}</p>
         </div>
       )}
 
