@@ -82,15 +82,6 @@ export async function POST(request: Request) {
         .all();
     }
 
-<<<<<<< HEAD
-    // Resolve model fallback chain: request override → assignment setting → default
-||||||| parent of 6cf1126 (fix(batch): validate assignment.selectedModelId against the registry)
-    // Precedence: explicit request modelId > assignment.selectedModelId >
-    // DEFAULT_MODEL_ID. The zod schema has already validated that any
-    // supplied id is in the registry, so the resolved id here is safe to
-    // persist to gradingResults.modelUsed and to hand to the grader
-    // dispatcher.
-=======
     // Precedence: explicit request modelId > assignment.selectedModelId >
     // DEFAULT_MODEL_ID.
     //
@@ -100,12 +91,12 @@ export async function POST(request: Request) {
     // registry after the assignment was saved). Re-check it here — if it's
     // stale, fall through to DEFAULT_MODEL_ID so the id we persist to
     // gradingResults.modelUsed matches the id the dispatcher will actually
-    // hit (the dispatcher also falls back to DEFAULT for unknown ids).
+    // hit. The dispatcher (lib/graders/index.ts) throws on unknown ids, so
+    // we'd rather not hand it a stale one.
     const validatedAssignmentModelId =
       assignment.selectedModelId && getModelById(assignment.selectedModelId)
         ? assignment.selectedModelId
         : null;
->>>>>>> 6cf1126 (fix(batch): validate assignment.selectedModelId against the registry)
     const effectiveModelId =
       requestModelId ?? validatedAssignmentModelId ?? DEFAULT_MODEL_ID;
 
