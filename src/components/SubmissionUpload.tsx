@@ -25,6 +25,15 @@ interface FileEntry {
    * can eyeball-verify before upload.
    */
   extractionWarnings: string[];
+  /**
+   * True when extraction threw — the row's `content` is empty and the
+   * entry must be excluded from the upload batch. Source of truth for
+   * both the upload filter and the red row styling. Avoids brittle
+   * string-matching against `extractionWarnings`, since not every
+   * fatal failure path produces an `UnsupportedFileTypeError` (dynamic
+   * imports, arrayBuffer, file.text() can all throw generic Errors).
+   */
+  hasFatalError: boolean;
 }
 
 type UploadState = "idle" | "review" | "done";
@@ -91,6 +100,7 @@ export default function SubmissionUpload({
       extractionWarnings: r.error
         ? [r.error, ...r.warnings]
         : r.warnings,
+      hasFatalError: r.error !== null,
     }));
 
     setPatternDetected(
@@ -176,9 +186,7 @@ export default function SubmissionUpload({
     // Skip rows that had fatal extraction errors — their content is empty
     // and sending them would just produce junk grades. The row banner
     // already tells the TA what's happening.
-    const uploadable = entries.filter(
-      (e) => !e.extractionWarnings.some((w) => w.startsWith("Cannot extract")),
-    );
+    const uploadable = entries.filter((e) => !e.hasFatalError);
     if (uploadable.length === 0) {
       setUploadError(
         "No uploadable files. Remove or replace the failed entries and try again.",
@@ -338,9 +346,7 @@ export default function SubmissionUpload({
 
         {/* File rows */}
         {entries.map((entry, idx) => {
-          const hasFatalError = entry.extractionWarnings.some((w) =>
-            w.startsWith("Cannot extract"),
-          );
+          const hasFatalError = entry.hasFatalError;
           const hasWarnings = entry.extractionWarnings.length > 0;
           return (
             <div
