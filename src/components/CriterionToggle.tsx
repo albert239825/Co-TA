@@ -10,6 +10,10 @@ interface CriterionToggleProps {
   aiFeedback: string;
   overrideScore: number | null;
   taComment: string | null;
+  // True when the AI flagged this criterion as uncertain; renders the yellow
+  // "needs manual review" treatment. The criterion is forced to earned=false
+  // at grade time so the score starts at 0 until the TA reviews/overrides.
+  needsReview: boolean;
   onToggle: (criterionScoreId: string, newEarned: boolean) => void;
   // Fired when the TA finishes editing the comment (blur / explicit save).
   // The parent is responsible for persisting the value.
@@ -48,6 +52,21 @@ function XIcon() {
   );
 }
 
+function FlagIcon() {
+  return (
+    <svg viewBox="0 0 12 12" className="w-3 h-3 text-amber-700 dark:text-amber-300">
+      <path
+        d="M3 1.5V10.5M3 2L8.5 2L7 4L8.5 6L3 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function CriterionToggle({
   criterionScoreId,
   description,
@@ -56,6 +75,7 @@ export default function CriterionToggle({
   aiFeedback,
   overrideScore,
   taComment,
+  needsReview,
   onToggle,
   onCommentChange,
   missingComment = false,
@@ -87,20 +107,33 @@ export default function CriterionToggle({
     }
   }
 
+  // The yellow "needs review" treatment only applies until the TA interacts
+  // with the row. Once they've explicitly overridden (overrideScore set),
+  // the blue "TA override" chip takes precedence — the flag has served its
+  // purpose.
+  const showNeedsReview = needsReview && !isOverridden;
+
+  // Circle color: yellow flag > earned > not-earned.
+  const circleClass = showNeedsReview
+    ? "bg-amber-100 dark:bg-amber-900/60 ring-1 ring-amber-400 dark:ring-amber-500"
+    : earned
+      ? "bg-emerald-100 dark:bg-emerald-900"
+      : "bg-red-100 dark:bg-red-900";
+
+  const rowHighlight = showNeedsReview
+    ? "bg-amber-50/70 dark:bg-amber-950/30 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+    : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50";
+
   return (
-    <div className="py-2 px-1 rounded-md transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+    <div className={`py-2 px-1 rounded-md transition-colors ${rowHighlight}`}>
       <div
         className="flex gap-2.5 items-start cursor-pointer"
         onClick={() => onToggle(criterionScoreId, !earned)}
       >
         <div
-          className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform hover:scale-110 ${
-            earned
-              ? "bg-emerald-100 dark:bg-emerald-900"
-              : "bg-red-100 dark:bg-red-900"
-          }`}
+          className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform hover:scale-110 ${circleClass}`}
         >
-          {earned ? <CheckIcon /> : <XIcon />}
+          {showNeedsReview ? <FlagIcon /> : earned ? <CheckIcon /> : <XIcon />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-baseline gap-2">
@@ -114,11 +147,18 @@ export default function CriterionToggle({
           <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
             {aiFeedback}
           </p>
-          {isOverridden && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md mt-1">
-              TA override: awarded {overrideScore} pts
-            </span>
-          )}
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {showNeedsReview && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
+                Needs manual review — defaulted to not earned
+              </span>
+            )}
+            {isOverridden && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md">
+                TA override: awarded {overrideScore} pts
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
