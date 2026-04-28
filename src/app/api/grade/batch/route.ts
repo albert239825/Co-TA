@@ -6,7 +6,7 @@ import { batchGradeRequestSchema, parseBody } from "../../../../../lib/validatio
 import { gradeProblem } from "../../../../../lib/grading";
 import { emitGradeEvent } from "../../../../../lib/events";
 import { computeEffectiveScore } from "../../../../../lib/scores";
-import { DEFAULT_MODEL_ID } from "../../../../../contracts/models";
+import { DEFAULT_MODEL_ID, getModelById } from "../../../../../contracts/models";
 import type {
   BatchGradeResponse,
   GradeStreamEvent,
@@ -82,16 +82,35 @@ export async function POST(request: Request) {
         .all();
     }
 
-    // Resolve model fallback chain: request override → assignment setting → default
+    // Precedence: explicit request modelId > assignment.selectedModelId >
+    // DEFAULT_MODEL_ID.
+    //
+    // `requestModelId` is validated by the zod schema before we get here, so
+    // we trust it. `assignment.selectedModelId` was validated at save time
+    // but could have gone stale (a model might have been removed from the
+    // registry after the assignment was saved). Re-check it here — if it's
+    // stale, fall through to DEFAULT_MODEL_ID so the id we persist to
+    // gradingResults.modelUsed matches the id the dispatcher will actually
+    // hit. The dispatcher (lib/graders/index.ts) throws on unknown ids, so
+    // we'd rather not hand it a stale one.
+    const validatedAssignmentModelId =
+      assignment.selectedModelId && getModelById(assignment.selectedModelId)
+        ? assignment.selectedModelId
+        : null;
     const effectiveModelId =
-      requestModelId ?? assignment.selectedModelId ?? DEFAULT_MODEL_ID;
+      requestModelId ?? validatedAssignmentModelId ?? DEFAULT_MODEL_ID;
 
     const started = submissionsToGrade.length;
     const streamUrl = `/api/grade/stream?assignmentId=${assignmentId}`;
 
     // Fire-and-forget: kick off grading in background
     // We don't await this — the client uses SSE to track progress
-    gradeSubmissions(assignmentId, submissionsToGrade, problemsWithCriteria, effectiveModelId);
+    gradeSubmissions(
+      assignmentId,
+      submissionsToGrade,
+      problemsWithCriteria,
+      effectiveModelId,
+    );
 
     return NextResponse.json(
       { started, streamUrl } satisfies BatchGradeResponse,
@@ -139,7 +158,7 @@ async function gradeSubmissions(
   assignmentId: string,
   submissions: SubmissionRow[],
   problemsWithCriteria: ProblemWithCriteria[],
-  modelId: string
+  modelId: string,
 ) {
   // Inline concurrency limiter (replaces p-limit which uses Node.js
   // subpath imports incompatible with Next.js webpack)
@@ -162,7 +181,7 @@ async function gradeSubmissions(
           assignmentId,
           submission,
           problemsWithCriteria,
-          modelId
+          modelId,
         ).finally(() => {
           active--;
           if (idx < submissions.length) {
@@ -193,7 +212,7 @@ async function gradeOneSubmission(
   assignmentId: string,
   submission: SubmissionRow,
   problemsWithCriteria: ProblemWithCriteria[],
-  modelId: string
+  modelId: string,
 ) {
   try {
     // 1. Set status to "grading"
