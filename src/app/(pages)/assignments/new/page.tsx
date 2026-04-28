@@ -1,194 +1,23 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AssignmentForm from "@/components/AssignmentForm";
+import type { AssignmentFormData } from "@/components/AssignmentForm";
 import type {
   CreateAssignmentRequest,
   CreateProblemInput,
   CreateCriterionInput,
 } from "@/contracts/types";
 
-interface CriterionForm {
-  description: string;
-  points: string;
-}
-
-interface ProblemForm {
-  name: string;
-  description: string;
-  criteria: CriterionForm[];
-}
-
 export default function NewAssignmentPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [problems, setProblems] = useState<ProblemForm[]>([
-    {
-      name: "",
-      description: "",
-      criteria: [{ description: "", points: "" }],
-    },
-  ]);
-  const [error, setError] = useState<string | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const newCriterionRef = useRef<HTMLInputElement | null>(null);
-  const newProblemRef = useRef<HTMLInputElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [focusTarget, setFocusTarget] = useState<string | null>(null);
-  const [focusProblemIdx, setFocusProblemIdx] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (focusTarget === "problem" && newProblemRef.current) {
-      newProblemRef.current.focus();
-      setFocusTarget(null);
-    }
-    if (focusTarget === "criterion" && newCriterionRef.current) {
-      newCriterionRef.current.focus();
-      setFocusTarget(null);
-      setFocusProblemIdx(null);
-    }
-  }, [focusTarget, problems]);
-
-  const totalPoints = problems.reduce(
-    (sum, p) =>
-      sum +
-      p.criteria.reduce((cs, c) => cs + (parseFloat(c.points) || 0), 0),
-    0
-  );
-
-  function addProblem() {
-    setProblems([
-      ...problems,
-      { name: "", description: "", criteria: [{ description: "", points: "" }] },
-    ]);
-    setFocusTarget("problem");
-  }
-
-  function removeProblem(pi: number) {
-    setProblems(problems.filter((_, i) => i !== pi));
-  }
-
-  function updateProblem(pi: number, field: keyof ProblemForm, value: string) {
-    const updated = [...problems];
-    if (field === "name" || field === "description") {
-      updated[pi] = { ...updated[pi], [field]: value };
-    }
-    setProblems(updated);
-  }
-
-  function addCriterion(pi: number) {
-    const updated = [...problems];
-    updated[pi] = {
-      ...updated[pi],
-      criteria: [...updated[pi].criteria, { description: "", points: "" }],
-    };
-    setProblems(updated);
-    setFocusProblemIdx(pi);
-    setFocusTarget("criterion");
-  }
-
-  function removeCriterion(pi: number, ci: number) {
-    const updated = [...problems];
-    updated[pi] = {
-      ...updated[pi],
-      criteria: updated[pi].criteria.filter((_, i) => i !== ci),
-    };
-    setProblems(updated);
-  }
-
-  function updateCriterion(
-    pi: number,
-    ci: number,
-    field: keyof CriterionForm,
-    value: string
-  ) {
-    const updated = [...problems];
-    updated[pi] = {
-      ...updated[pi],
-      criteria: updated[pi].criteria.map((c, i) =>
-        i === ci ? { ...c, [field]: value } : c
-      ),
-    };
-    setProblems(updated);
-  }
-
-  function validate(): string | null {
-    // Mirror the server-side zod schema in lib/validation.ts so we surface
-    // specific messages before the POST rather than a generic "Validation
-    // failed" 400.
-    if (!name.trim()) return "Assignment name is required.";
-    if (!description.trim()) return "Assignment prompt is required.";
-    if (problems.length === 0) return "At least one problem is required.";
-    for (let i = 0; i < problems.length; i++) {
-      const p = problems[i];
-      const label = p.name.trim() || `Problem ${i + 1}`;
-      if (!p.name.trim()) return `Problem ${i + 1} needs a name.`;
-      if (!p.description.trim())
-        return `Problem "${label}" needs a description.`;
-      if (p.criteria.length === 0)
-        return `Problem "${label}" needs at least one criterion.`;
-      for (let j = 0; j < p.criteria.length; j++) {
-        const c = p.criteria[j];
-        if (!c.description.trim())
-          return `Problem "${label}", criterion ${j + 1} needs a description.`;
-        const pts = parseFloat(c.points);
-        if (!pts || pts <= 0)
-          return `Problem "${label}", criterion ${j + 1} needs points > 0.`;
-      }
-    }
-    return null;
-  }
-
-  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const raw = JSON.parse(ev.target?.result as string);
-        if (!raw.name || !raw.description || !Array.isArray(raw.problems)) {
-          throw new Error("JSON must have name, description, and problems array.");
-        }
-        setName(raw.name);
-        setDescription(raw.description);
-        setProblems(
-          raw.problems.map((p: { name: string; description: string; criteria: { description: string; points: number }[] }) => ({
-            name: p.name ?? "",
-            description: p.description ?? "",
-            criteria: Array.isArray(p.criteria)
-              ? p.criteria.map((c: { description: string; points: number }) => ({
-                  description: c.description ?? "",
-                  points: String(c.points ?? ""),
-                }))
-              : [{ description: "", points: "" }],
-          }))
-        );
-        setImportError(null);
-        setError(null);
-      } catch (err) {
-        setImportError(err instanceof Error ? err.message : "Invalid JSON file.");
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  async function handleSubmit() {
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    setError(null);
-    setSubmitting(true);
-
+  async function handleSubmit(data: AssignmentFormData) {
     const request: CreateAssignmentRequest = {
-      name: name.trim(),
-      description: description.trim(),
-      problems: problems.map(
+      name: data.name.trim(),
+      description: data.description.trim(),
+      problems: data.problems.map(
         (p, pi): CreateProblemInput => ({
           name: p.name.trim(),
           description: p.description.trim(),
@@ -204,43 +33,28 @@ export default function NewAssignmentPage() {
       ),
     };
 
-    try {
-      const res = await fetch("/api/assignments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-      });
-      if (!res.ok) {
-        // Server returns { error: string, details?: string }. The details
-        // field holds the specific zod failure reason — surface it so
-        // TAs see "Assignment description is required" instead of the
-        // generic "Validation failed".
-        let errorMessage = "Failed to create assignment";
-        try {
-          const data = await res.json();
-          if (data?.details) {
-            errorMessage = `${data.error ?? "Validation failed"}: ${data.details}`;
-          } else if (data?.error) {
-            errorMessage = data.error;
-          }
-        } catch {
-          // Non-JSON error body — fall through to the default message.
+    const res = await fetch("/api/assignments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    if (!res.ok) {
+      let errorMessage = "Failed to create assignment";
+      try {
+        const errData = await res.json();
+        if (errData?.details) {
+          errorMessage = `${errData.error ?? "Validation failed"}: ${errData.details}`;
+        } else if (errData?.error) {
+          errorMessage = errData.error;
         }
-        throw new Error(errorMessage);
+      } catch {
+        // Non-JSON error body
       }
-      const created = await res.json();
-      router.push(`/assignments/${created.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create assignment");
-    } finally {
-      setSubmitting(false);
+      throw new Error(errorMessage);
     }
+    const created = await res.json();
+    router.push(`/assignments/${created.id}`);
   }
-
-  // Criterion row uses flex; shared w-full would override w-20 on the points input.
-  const inputBaseClasses =
-    "bg-transparent border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400";
-  const inputClasses = `w-full ${inputBaseClasses}`;
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
@@ -254,198 +68,11 @@ export default function NewAssignmentPage() {
         New assignment
       </h1>
 
-      {/* Metadata */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Assignment name
-            </label>
-            <input
-              type="text"
-              className={inputClasses}
-              placeholder="e.g. HW4: Backpropagation and SGD"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Assignment prompt
-            </label>
-            <textarea
-              className={`${inputClasses} min-h-[100px]`}
-              rows={4}
-              placeholder="The full assignment text students received..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Rubric editor */}
-      <div className="mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
-            Rubric
-          </h2>
-          <button
-            type="button"
-            onClick={addProblem}
-            className="border border-zinc-300 dark:border-zinc-600 rounded-lg px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Add problem
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {problems.map((problem, pi) => (
-            <div
-              key={pi}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6"
-            >
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1 space-y-3">
-                  <input
-                    ref={pi === problems.length - 1 ? newProblemRef : undefined}
-                    type="text"
-                    className={inputClasses}
-                    placeholder={`Problem ${pi + 1} name (e.g. Q1: Chain rule derivation)`}
-                    value={problem.name}
-                    onChange={(e) => updateProblem(pi, "name", e.target.value)}
-                  />
-                  <textarea
-                    className={inputClasses}
-                    rows={2}
-                    placeholder="What this problem asks..."
-                    value={problem.description}
-                    onChange={(e) =>
-                      updateProblem(pi, "description", e.target.value)
-                    }
-                  />
-                </div>
-                {problems.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeProblem(pi)}
-                    className="text-zinc-400 hover:text-red-500 p-1 mt-1"
-                    title="Remove problem"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    >
-                      <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-
-              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 space-y-2">
-                {problem.criteria.map((criterion, ci) => (
-                  <div key={ci} className="flex items-center gap-2 group min-w-0">
-                    <input
-                      ref={
-                        pi === focusProblemIdx &&
-                        ci === problem.criteria.length - 1
-                          ? newCriterionRef
-                          : undefined
-                      }
-                      type="text"
-                      className={`min-w-0 flex-1 ${inputBaseClasses}`}
-                      placeholder="Criterion description"
-                      value={criterion.description}
-                      onChange={(e) =>
-                        updateCriterion(pi, ci, "description", e.target.value)
-                      }
-                    />
-                    <input
-                      type="number"
-                      className={`w-20 shrink-0 text-right ${inputBaseClasses}`}
-                      placeholder="Pts"
-                      min="0"
-                      step="1"
-                      value={criterion.points}
-                      onChange={(e) =>
-                        updateCriterion(pi, ci, "points", e.target.value)
-                      }
-                    />
-                    {problem.criteria.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeCriterion(pi, ci)}
-                        className="text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                        title="Remove criterion"
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                        >
-                          <path
-                            d="M4 4L12 12M12 4L4 12"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addCriterion(pi)}
-                  className="text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 mt-1"
-                >
-                  + Add criterion
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="mt-6 flex items-center justify-between">
-        <span className="text-sm font-mono text-zinc-500">
-          Total: {totalPoints} pts
-        </span>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-3">
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={handleImport}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-sm text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
-            >
-              Import JSON
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-lg px-5 py-2 text-sm font-medium disabled:opacity-50"
-            >
-              {submitting ? "Creating..." : "Create assignment"}
-            </button>
-          </div>
-          {importError && (
-            <p className="text-red-500 text-xs">{importError}</p>
-          )}
-        </div>
-      </div>
+      <AssignmentForm
+        onSubmit={handleSubmit}
+        submitLabel="Create assignment"
+        submittingLabel="Creating..."
+      />
     </div>
   );
 }
