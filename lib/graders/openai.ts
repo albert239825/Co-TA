@@ -23,7 +23,7 @@ export async function gradeWithOpenAI(
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: buildUserPrompt(input) },
     ],
-    temperature: 0.2,
+
   });
 
   const content = response.choices[0]?.message?.content;

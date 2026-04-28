@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import type {
   AssignmentResponse,
@@ -224,6 +225,12 @@ export default function TriagePage() {
             ? `Grading\u2026 (${gradeProgress.done}/${gradeProgress.total})`
             : "Grade all pending"}
         </button>
+        <Link
+          href={`/assignments/${assignmentId}/edit`}
+          className="border border-zinc-300 dark:border-zinc-600 rounded-lg px-3.5 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          Edit rubric
+        </Link>
         <button
           onClick={handleExport}
           className="border border-zinc-300 dark:border-zinc-600 rounded-lg px-3.5 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
