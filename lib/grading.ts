@@ -3,10 +3,11 @@
 // This module provides the grading function that processes a single
 // (submission, problem) pair. It ships with a stub implementation
 // that returns deterministic mock results in the correct
-// GradeProblemPromptOutput shape. The real OpenAI path will be
-// toggled in when prompts/grade.ts lands from the orchestrator.
+// GradeProblemPromptOutput shape. When USE_REAL_GRADING=true, the
+// model's provider field routes to the correct API client (OpenAI
+// implemented; Anthropic adapter coming in Feature C child PR).
 //
-// Toggle: set USE_REAL_GRADING=true env var to use OpenAI.
+// Toggle: set USE_REAL_GRADING=true env var to use real LLM APIs.
 // ─────────────────────────────────────────────────────────────────
 
 import type {
@@ -14,18 +15,52 @@ import type {
   GradeProblemPromptOutput,
   GradePromptCriterionResult,
 } from "../contracts/types";
+import { DEFAULT_MODEL_ID, getModelById } from "../contracts/models";
 
 const USE_REAL_GRADING = process.env.USE_REAL_GRADING === "true";
 
 /**
  * Grade a single problem for a submission.
  * Returns scores for each criterion in the problem.
+ *
+ * @param modelId – optional model id override. Falls back to DEFAULT_MODEL_ID
+ *   when omitted. The stub ignores it; the real path routes to the correct
+ *   provider based on the model registry.
  */
 export async function gradeProblem(
-  input: GradeProblemPromptInput
+  input: GradeProblemPromptInput,
+  modelId: string = DEFAULT_MODEL_ID
 ): Promise<GradeProblemPromptOutput> {
   if (USE_REAL_GRADING) {
-    return gradeProblemWithOpenAI(input);
+    // Resolve against the registry. If the caller passed an id we no longer
+    // recognise (e.g. the model was dropped from the registry while an
+    // assignment still references it), surface an explicit error rather than
+    // silently forwarding the stale id to the OpenAI API — that produced
+    // obscure "model not found" responses.
+    const model = getModelById(modelId);
+    if (!model) {
+      throw new Error(
+        `Unknown model "${modelId}" — not present in the model registry. ` +
+          `It may have been removed from contracts/models.ts.`,
+      );
+    }
+
+    switch (model.provider) {
+      case "openai":
+        return gradeProblemWithOpenAI(input, model.id);
+      case "anthropic":
+        // TODO: implement Anthropic adapter in Feature C child PR
+        throw new Error(
+          `Anthropic provider not yet implemented. Model "${model.id}" cannot be used for grading until the Anthropic adapter is added.`,
+        );
+      default: {
+        const _exhaustive: never = model.provider;
+        void _exhaustive;
+        throw new Error(
+          `Unknown provider "${model.provider}" for model "${model.id}"`,
+        );
+      }
+    }
   }
   return gradeProblemStub(input);
 }
@@ -58,10 +93,12 @@ function gradeProblemStub(
 
 /**
  * Real OpenAI implementation — placeholder for when prompts/grade.ts lands.
- * Will use GPT-4o in JSON mode to grade the submission against the rubric.
+ * Uses the caller-supplied model id so the pluggable-model fallback chain is
+ * respected end-to-end.
  */
 async function gradeProblemWithOpenAI(
-  input: GradeProblemPromptInput
+  input: GradeProblemPromptInput,
+  modelId: string
 ): Promise<GradeProblemPromptOutput> {
   // Dynamic import to avoid loading OpenAI when using stub
   const { default: OpenAI } = await import("openai");
@@ -94,7 +131,7 @@ ${input.criteria.map((c) => `- [${c.criterionId}] ${c.description} (${c.points} 
 ${input.submissionText}`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: modelId,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: systemPrompt },

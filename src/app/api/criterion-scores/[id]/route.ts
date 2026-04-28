@@ -16,7 +16,7 @@ export async function PATCH(
     const parsed = await parseBody(request, updateCriterionScoreSchema);
     if (parsed.error) return parsed.error;
 
-    const { overrideScore, taComment } = parsed.data;
+    const { overrideScore, taComment, needsReview } = parsed.data;
 
     // Look up the criterion_score row
     const criterionScore = db
@@ -32,13 +32,21 @@ export async function PATCH(
       );
     }
 
-    // Update the criterion_score row
+    // Update the criterion_score row. Only touch fields the caller actually
+    // sent so partial PATCHes don't clobber existing values.
+    const updates: Partial<typeof schema.criterionScores.$inferInsert> = {
+      overrideScore,
+      updatedAt: new Date(),
+    };
+    if (taComment !== undefined) {
+      updates.taComment = taComment ?? null;
+    }
+    if (typeof needsReview === "boolean") {
+      updates.needsReview = needsReview;
+    }
+
     db.update(schema.criterionScores)
-      .set({
-        overrideScore,
-        taComment: taComment ?? null,
-        updatedAt: new Date(),
-      })
+      .set(updates)
       .where(eq(schema.criterionScores.id, id))
       .run();
 

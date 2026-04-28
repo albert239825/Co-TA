@@ -125,6 +125,7 @@ export async function GET(
             aiFeedback: schema.criterionScores.aiFeedback,
             overrideScore: schema.criterionScores.overrideScore,
             taComment: schema.criterionScores.taComment,
+            needsReview: schema.criterionScores.needsReview,
           })
           .from(schema.criterionScores)
           .where(eq(schema.criterionScores.gradingResultId, grResult.id))
@@ -139,6 +140,7 @@ export async function GET(
             aiFeedback: string;
             overrideScore: number | null;
             taComment: string | null;
+            needsReview: boolean;
           }
         >();
         for (const cs of criterionScoresRows) {
@@ -148,6 +150,7 @@ export async function GET(
             aiFeedback: cs.aiFeedback,
             overrideScore: cs.overrideScore,
             taComment: cs.taComment,
+            needsReview: cs.needsReview ?? false,
           });
         }
 
@@ -175,6 +178,7 @@ export async function GET(
                 aiFeedback: scoreData.aiFeedback,
                 overrideScore: scoreData.overrideScore,
                 taComment: scoreData.taComment,
+                needsReview: scoreData.needsReview,
                 effectiveScore,
               });
               problemScore += effectiveScore;

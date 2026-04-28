@@ -9,6 +9,8 @@ export const assignments = sqliteTable("assignments", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   description: text("description").notNull(), // the assignment prompt students received
+  // nullable: falls back to DEFAULT_MODEL_ID from contracts/models.ts when unset.
+  selectedModelId: text("selected_model_id"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -91,7 +93,7 @@ export const gradingResults = sqliteTable("grading_results", {
   submissionId: text("submission_id")
     .notNull()
     .references(() => submissions.id, { onDelete: "cascade" }),
-  modelUsed: text("model_used").notNull().default("gpt-4o"),
+  modelUsed: text("model_used").notNull().default("gpt-5-mini"),
   gradedAt: integer("graded_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
@@ -119,6 +121,11 @@ export const criterionScores = sqliteTable("criterion_scores", {
   aiFeedback: text("ai_feedback").notNull(), // AI's explanation
   overrideScore: integer("override_score"), // nullable — TA override (0 to criterion.points)
   taComment: text("ta_comment"), // nullable — TA's note on override
+  // Binary confidence flag: true = grader flagged this criterion for manual
+  // review. UI renders a yellow state and clamps earned=false for flagged rows.
+  needsReview: integer("needs_review", { mode: "boolean" })
+    .notNull()
+    .default(false),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

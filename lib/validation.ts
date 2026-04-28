@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import type { ApiError } from "../contracts/types";
+import { MODEL_IDS } from "../contracts/models";
 
 // ─── Zod schemas derived from contracts/types.ts ───────────────
 
@@ -19,12 +20,27 @@ const createProblemInputSchema = z.object({
     .min(1, "At least one criterion is required"),
 });
 
+// Accept any of the known model ids, or null/undefined. Unknown ids are
+// rejected with a helpful message so typos surface early.
+const selectedModelIdSchema = z
+  .string()
+  .refine((v) => MODEL_IDS.includes(v), {
+    message: `selectedModelId must be one of: ${MODEL_IDS.join(", ")}`,
+  })
+  .nullable()
+  .optional();
+
 export const createAssignmentSchema = z.object({
   name: z.string().min(1, "Assignment name is required"),
   description: z.string().min(1, "Assignment description is required"),
+  selectedModelId: selectedModelIdSchema,
   problems: z
     .array(createProblemInputSchema)
     .min(1, "At least one problem is required"),
+});
+
+export const updateAssignmentSchema = z.object({
+  selectedModelId: selectedModelIdSchema,
 });
 
 const submissionFileInputSchema = z.object({
@@ -43,11 +59,20 @@ export const uploadSubmissionsSchema = z.object({
 export const batchGradeRequestSchema = z.object({
   assignmentId: z.string().uuid("Invalid assignment ID"),
   submissionIds: z.array(z.string().uuid("Invalid submission ID")),
+  // Optional per-run model override. Validated against the model registry.
+  modelId: z
+    .string()
+    .refine((v) => MODEL_IDS.includes(v), {
+      message: `modelId must be one of: ${MODEL_IDS.join(", ")}`,
+    })
+    .optional(),
 });
 
 export const updateCriterionScoreSchema = z.object({
   overrideScore: z.number().int().min(0).nullable(),
   taComment: z.string().nullable().optional(),
+  // Optional: TA can toggle the needs-review flag (e.g. after handling it).
+  needsReview: z.boolean().optional(),
 });
 
 export const exportQuerySchema = z.object({
