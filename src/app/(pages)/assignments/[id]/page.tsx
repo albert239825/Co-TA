@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import type {
   AssignmentResponse,
@@ -25,6 +25,10 @@ export default function TriagePage() {
   const [showUpload, setShowUpload] = useState(true);
   const [modelSaving, setModelSaving] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
+  const [gradingTotal, setGradingTotal] = useState(0);
+  const gradingDoneRef = useRef(0);
+  const [gradingDone, setGradingDone] = useState(0);
+  const [gradingErrors, setGradingErrors] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -69,9 +73,14 @@ export default function TriagePage() {
         totalScore: event.totalScore ?? s.totalScore,
         problemScores: event.problemScores ?? s.problemScores,
       }));
+      gradingDoneRef.current += 1;
+      setGradingDone(gradingDoneRef.current);
     },
     onBatchComplete: () => {
-      // Stats recalculated automatically from submissions state
+      setGradingTotal(0);
+      gradingDoneRef.current = 0;
+      setGradingDone(0);
+      setGradingErrors(0);
     },
     onError: (event: GradeStreamEvent) => {
       console.error("Grading error:", event.error);
@@ -79,6 +88,9 @@ export default function TriagePage() {
         ...s,
         status: "pending",
       }));
+      gradingDoneRef.current += 1;
+      setGradingDone(gradingDoneRef.current);
+      setGradingErrors((prev) => prev + 1);
     },
   });
 
@@ -88,6 +100,11 @@ export default function TriagePage() {
       .map((s) => s.id);
 
     if (pendingIds.length === 0) return;
+
+    setGradingTotal(pendingIds.length);
+    gradingDoneRef.current = 0;
+    setGradingDone(0);
+    setGradingErrors(0);
 
     const res = await fetch("/api/grade/batch", {
       method: "POST",
@@ -215,7 +232,9 @@ export default function TriagePage() {
           disabled={isStreaming}
           className="bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
         >
-          {isStreaming ? "Grading..." : "Grade all pending"}
+          {isStreaming && gradingTotal > 0
+            ? `Grading ${gradingDone} / ${gradingTotal}…`
+            : "Grade all pending"}
         </button>
         <button
           onClick={handleExport}
@@ -236,6 +255,31 @@ export default function TriagePage() {
           />
         </div>
       </div>
+
+      {/* Grading progress bar */}
+      {isStreaming && gradingTotal > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              Grading submissions… {gradingDone} of {gradingTotal} complete
+              {gradingErrors > 0 && (
+                <span className="text-red-500 dark:text-red-400 ml-1">
+                  ({gradingErrors} failed)
+                </span>
+              )}
+            </span>
+            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+              {Math.round((gradingDone / gradingTotal) * 100)}%
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-zinc-900 dark:bg-white rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${(gradingDone / gradingTotal) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Triage table */}
       <table className="w-full text-sm table-fixed border-collapse">
