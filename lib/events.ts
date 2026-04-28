@@ -15,14 +15,27 @@
 import { EventEmitter } from "events";
 import type { GradeStreamEvent } from "../contracts/types";
 
-// Increase max listeners since multiple clients may connect
-const gradeEvents = new EventEmitter();
-gradeEvents.setMaxListeners(100);
+// In Next.js dev mode each API route may re-evaluate this module,
+// producing separate EventEmitter / Map instances.  Pinning them on
+// `globalThis` guarantees a true process-wide singleton so the batch
+// route and the SSE stream route always share the same state.
+const g = globalThis as unknown as {
+  __gradeEvents?: EventEmitter;
+  __eventBuffers?: Map<string, GradeStreamEvent[]>;
+};
+
+if (!g.__gradeEvents) {
+  g.__gradeEvents = new EventEmitter();
+  g.__gradeEvents.setMaxListeners(100);
+}
+if (!g.__eventBuffers) {
+  g.__eventBuffers = new Map();
+}
+
+const gradeEvents = g.__gradeEvents;
+const eventBuffers = g.__eventBuffers;
 
 export { gradeEvents };
-
-// Per-assignment event buffer for late-connecting SSE clients.
-const eventBuffers = new Map<string, GradeStreamEvent[]>();
 
 /**
  * Clear the event buffer for an assignment.
