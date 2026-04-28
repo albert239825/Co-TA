@@ -32,9 +32,11 @@ export default function NewAssignmentPage() {
     },
   ]);
   const [error, setError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const newCriterionRef = useRef<HTMLInputElement | null>(null);
   const newProblemRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [focusTarget, setFocusTarget] = useState<string | null>(null);
   const [focusProblemIdx, setFocusProblemIdx] = useState<number | null>(null);
 
@@ -138,6 +140,40 @@ export default function NewAssignmentPage() {
       }
     }
     return null;
+  }
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const raw = JSON.parse(ev.target?.result as string);
+        if (!raw.name || !raw.description || !Array.isArray(raw.problems)) {
+          throw new Error("JSON must have name, description, and problems array.");
+        }
+        setName(raw.name);
+        setDescription(raw.description);
+        setProblems(
+          raw.problems.map((p: { name: string; description: string; criteria: { description: string; points: number }[] }) => ({
+            name: p.name ?? "",
+            description: p.description ?? "",
+            criteria: Array.isArray(p.criteria)
+              ? p.criteria.map((c: { description: string; points: number }) => ({
+                  description: c.description ?? "",
+                  points: String(c.points ?? ""),
+                }))
+              : [{ description: "", points: "" }],
+          }))
+        );
+        setImportError(null);
+        setError(null);
+      } catch (err) {
+        setImportError(err instanceof Error ? err.message : "Invalid JSON file.");
+      }
+    };
+    reader.readAsText(file);
   }
 
   async function handleSubmit() {
@@ -379,16 +415,35 @@ export default function NewAssignmentPage() {
         <span className="text-sm font-mono text-zinc-500">
           Total: {totalPoints} pts
         </span>
-        <div className="flex items-center gap-3">
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-lg px-5 py-2 text-sm font-medium disabled:opacity-50"
-          >
-            {submitting ? "Creating..." : "Create assignment"}
-          </button>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-3">
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleImport}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-sm text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
+            >
+              Import JSON
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-lg px-5 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {submitting ? "Creating..." : "Create assignment"}
+            </button>
+          </div>
+          {importError && (
+            <p className="text-red-500 text-xs">{importError}</p>
+          )}
         </div>
       </div>
     </div>
