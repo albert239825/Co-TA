@@ -20,7 +20,7 @@ export const assignmentTemplateSchema = z.object({
           .array(
             z.object({
               description: z.string().min(1),
-              points: z.number().min(0),
+              points: z.number().int().min(0),
               sortOrder: z.number().int().min(0),
             })
           )
