@@ -271,7 +271,7 @@ export default function TriagePage() {
           onClick={handleExportTemplate}
           className="border border-zinc-300 dark:border-zinc-600 rounded-lg px-3.5 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
         >
-          Export Template
+          Export Rubric
         </button>
         <div className="ml-auto flex items-center gap-2">
           {modelError && (

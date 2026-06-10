@@ -5,36 +5,44 @@
     {
       "name": "Problem 1 — Factorial",
       "description": "Write a Python function factorial(n) that returns the factorial of a non-negative integer n. Your solution must handle the base case and use recursion.",
+      "sortOrder": 1,
       "criteria": [
         {
           "description": "Correct base case (n == 0 or n == 1 returns 1)",
-          "points": 3
+          "points": 3,
+          "sortOrder": 1
         },
         {
           "description": "Correct recursive call",
-          "points": 4
+          "points": 4,
+          "sortOrder": 2
         },
         {
           "description": "Student demonstrates clear understanding of why recursion terminates (explanation or comment required)",
-          "points": 3
+          "points": 3,
+          "sortOrder": 3
         }
       ]
     },
     {
       "name": "Problem 2 — Palindrome",
       "description": "Write a Python function is_palindrome(s) that returns True if the string s is a palindrome (reads the same forwards and backwards), False otherwise. It must be case-insensitive.",
+      "sortOrder": 2,
       "criteria": [
         {
           "description": "Lowercases the input before comparing",
-          "points": 3
+          "points": 3,
+          "sortOrder": 1
         },
         {
           "description": "Correctly reverses/compares the string",
-          "points": 4
+          "points": 4,
+          "sortOrder": 2
         },
         {
           "description": "Solution is reasonably efficient and avoids obviously redundant operations",
-          "points": 3
+          "points": 3,
+          "sortOrder": 3
         }
       ]
     }
