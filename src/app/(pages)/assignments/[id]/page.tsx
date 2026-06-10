@@ -142,6 +142,35 @@ export default function TriagePage() {
     );
   }
 
+  function handleExportTemplate() {
+    if (!assignment) return;
+    const template = {
+      name: assignment.name,
+      description: assignment.description,
+      problems: assignment.problems.map((p) => ({
+        name: p.name,
+        description: p.description,
+        sortOrder: p.sortOrder,
+        criteria: p.criteria.map((c) => ({
+          description: c.description,
+          points: c.points,
+          sortOrder: c.sortOrder,
+        })),
+      })),
+    };
+    const blob = new Blob([JSON.stringify(template, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${assignment.name}-template.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   const handleUploadComplete = useCallback(
     (newSubmissions: SubmissionListItem[]) => {
       setSubmissions((prev) => [...prev, ...newSubmissions]);
@@ -237,6 +266,12 @@ export default function TriagePage() {
           className="border border-zinc-300 dark:border-zinc-600 rounded-lg px-3.5 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
         >
           Export CSV
+        </button>
+        <button
+          onClick={handleExportTemplate}
+          className="border border-zinc-300 dark:border-zinc-600 rounded-lg px-3.5 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          Export Template
         </button>
         <div className="ml-auto flex items-center gap-2">
           {modelError && (
