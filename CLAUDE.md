@@ -64,7 +64,7 @@ Submission status lifecycle: `pending → grading → graded → reviewed`
 
 1. `POST /api/grade/batch` — validates request, resolves model fallback chain, fires `gradeSubmissions()` as fire-and-forget
 2. Model fallback order: `request.modelId → assignment.selectedModelId → DEFAULT_MODEL_ID` (`gpt-5-mini`)
-3. `lib/grading.ts:gradeProblem()` — dispatches to provider adapter based on `contracts/models.ts` registry. Stub is used when `USE_REAL_GRADING` is not `true`. Anthropic adapter is not yet implemented (throws).
+3. `lib/grading.ts:gradeProblem()` — dispatches to provider adapter based on `contracts/models.ts` registry. Stub is used when `USE_REAL_GRADING` is not `true`. OpenAI and Anthropic adapters are both implemented (`lib/graders/`).
 4. Results written to `grading_results` + `criterion_scores`. When a grader sets `needsReview=true`, `earned` is clamped to `false`.
 5. SSE progress is pushed via `lib/events.ts` (in-memory `EventEmitter`). The SSE route (`/api/grade/stream`) subscribes and forwards events; it removes the listener on client disconnect to prevent memory leaks.
 
