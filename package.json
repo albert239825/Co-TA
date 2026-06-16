@@ -12,7 +12,8 @@
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "test:watch": "vitest",
-    "simulate": "tsx simulated-students/run.ts"
+    "simulate": "tsx simulated-students/run.ts",
+    "simulate:generate": "tsx simulated-students/generate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

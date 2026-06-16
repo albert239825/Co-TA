@@ -2,6 +2,36 @@
 
 A running log of work sessions on Co-TA. Newest first.
 
+## 2026-06-16 — Reviewer revisions to the simulated-student suite
+
+Addressed two reviewer asks (operational detail on persona authoring; coverage
+beyond programming failure modes) + a scoping clarification. **System changes
+only** this round; paper prose deferred.
+
+- **Authoring / co-design (provenance):** `Persona` now carries `source`
+  (`manual`/`generated`/`historical`), `category` (`competence`/`fairness`),
+  and `variantOf`. Added `personas/_template.ts` (manual) and `generate.ts`
+  (`npm run simulate:generate`) — an LLM drafts a persona + proposed ground
+  truth for the instructor to revise (`--mode failure|historical`, `--mock`,
+  `--write`). Harness prints a per-problem persona legend showing provenance.
+- **Broadened coverage:** two presentation dimensions (`language_fluency`,
+  `accessibility`); CS1 fairness matched pairs (base + ESL + accessibility);
+  a new short-answer problem (`explain-overfitting`) with native/ESL matched
+  pair + incomplete/wrong cases; short-answer rubrics `SA Content` and
+  `SA Content + Writing`.
+- **Fairness report:** for matched pairs, compares each variant's score gap vs
+  its base against the rubric-legitimate delta; flags the excess as grader
+  bias. The SA-Content vs SA-Content+Writing pairing separates rubric-induced
+  language penalties (expected) from bias (the gap beyond them).
+- **Multi-problem harness:** personas/rubrics group by `problemId` (default =
+  CS1); added ground-truth coverage validation; scoping note in the banner.
+- **Results export:** `--out results.md` (score grid with ⚠️ answer-key
+  mismatch flags, fairness table, collapsible per-criterion feedback) and
+  `--csv results.csv` (long-format grid). Markdown chosen as the
+  easiest-to-read artifact for TAs / the paper.
+- Typechecks clean; stub smoke test + generator mock + export verified. Real
+  fairness/results numbers need `USE_REAL_GRADING=true` + API keys.
+
 ## 2026-06-16 — Familiarization, run, and simulated-student suite
 
 ### Familiarization

@@ -15,13 +15,20 @@
 export type Level = "good" | "partial" | "bad";
 
 export type DimensionId =
+  // ── Competence: what the work demonstrates ──
   | "correctness" // does the algorithm/logic actually solve the problem?
   | "execution" // does the code run (no syntax / runtime errors)?
   | "efficiency" // is the time/space complexity optimal (here: O(n))?
   | "completeness" // edge cases — empty string, index 0, all-repeat, etc.
   | "simplicity" // appropriately simple; no needless abstraction
   | "readability" // naming, formatting, PEP-8
-  | "explanation"; // comments / docstring explaining the approach
+  | "explanation" // comments / docstring explaining the approach
+  // ── Presentation: form, decoupled from competence ──
+  // These describe HOW a response is presented, not whether it is correct.
+  // A fair, content-focused rubric should NOT let them change the score —
+  // the fairness personas (matched pairs) measure whether the grader does.
+  | "language_fluency" // native vs non-native / ESL phrasing
+  | "accessibility"; // accessible presentation (plain-text math, no reliance on visual layout)
 
 export interface DimensionMeta {
   id: DimensionId;
@@ -100,6 +107,28 @@ export const DIMENSIONS: readonly DimensionMeta[] = [
       good: "Clear explanation of the approach.",
       partial: "Sparse / incomplete explanation.",
       bad: "No explanation at all.",
+    },
+  },
+  {
+    id: "language_fluency",
+    label: "Language fluency (presentation)",
+    description:
+      "Native vs non-native / ESL phrasing. Form only — must not change a content score.",
+    levels: {
+      good: "Fluent, native-like phrasing.",
+      partial: "Non-native phrasing, but the meaning is clear.",
+      bad: "Language errors that genuinely obscure the meaning.",
+    },
+  },
+  {
+    id: "accessibility",
+    label: "Accessibility (presentation)",
+    description:
+      "Accessible presentation (plain-text math, no reliance on visual layout). Form only — must not change a content score.",
+    levels: {
+      good: "Accessible: plain-text, screen-reader friendly.",
+      partial: "Some accessibility barriers.",
+      bad: "Inaccessible: relies on visual formatting / unexplained symbols.",
     },
   },
 ] as const;
