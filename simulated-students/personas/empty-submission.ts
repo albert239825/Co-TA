@@ -7,6 +7,8 @@ export const emptySubmission: Persona = {
   name: "Empty Submission",
   summary:
     "Un-implemented stub. Floor case: should earn zero under every rubric.",
+  source: "manual",
+  category: "competence",
   groundTruth: {
     correctness: "bad",
     execution: "bad",

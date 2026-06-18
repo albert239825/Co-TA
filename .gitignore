@@ -38,3 +38,12 @@ npm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
+
+# simulated-students: generated artifacts (not meaningful to track)
+__pycache__/
+simulated-students/results.md
+simulated-students/results.csv
+simulated-students/personas/generated/
+llm_eval_results.json
+real_llm_classroom_dataset.json
+table1_report.md

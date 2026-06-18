@@ -9,6 +9,8 @@ export const cleanCoderWrongLogic: Persona = {
   name: "Clean Coder w/ Wrong Logic",
   summary:
     "PEP-8 perfect, well-documented, but the logic is inverted (returns the first repeating char). Tests the grader for readability bias.",
+  source: "manual",
+  category: "competence",
   groundTruth: {
     correctness: "bad", // `> 1` should be `== 1`
     execution: "good",

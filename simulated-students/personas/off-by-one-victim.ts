@@ -10,6 +10,8 @@ export const offByOneVictim: Persona = {
   name: "Off-by-One Victim",
   summary:
     "Right approach, but enumerate(start=1) makes every index off by one (and breaks index 0). Tests capacity for granular partial credit across criteria.",
+  source: "manual",
+  category: "competence",
   groundTruth: {
     correctness: "partial", // correct shape, systematically wrong index
     execution: "good",

@@ -7,6 +7,8 @@ export const perfectStudent: Persona = {
   name: "Perfect Student",
   summary:
     "Control case: optimal O(n) logic, clean style, clear explanation. Should earn every criterion under every rubric.",
+  source: "manual",
+  category: "competence",
   groundTruth: {
     correctness: "good",
     execution: "good",

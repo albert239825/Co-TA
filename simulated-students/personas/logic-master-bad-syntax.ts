@@ -9,6 +9,8 @@ export const logicMasterBadSyntax: Persona = {
   name: "Logic Master w/ Bad Syntax",
   summary:
     "Perfect O(n) logic, but a missing colon causes a syntax error. Tests whether the rubric separates conceptual correctness from working code.",
+  source: "manual",
+  category: "competence",
   groundTruth: {
     correctness: "good",
     execution: "bad", // missing colon → SyntaxError

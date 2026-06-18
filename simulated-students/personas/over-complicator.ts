@@ -8,6 +8,8 @@ export const overComplicator: Persona = {
   name: "Over-Complicator",
   summary:
     "Correct and O(n), but buries it in an unnecessary stateful class. Tests whether the rubric enforces simplicity.",
+  source: "manual",
+  category: "competence",
   groundTruth: {
     correctness: "good",
     execution: "good",

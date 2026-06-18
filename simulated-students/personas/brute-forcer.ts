@@ -8,6 +8,8 @@ export const bruteForcer: Persona = {
   name: "Brute Forcer",
   summary:
     "Correct result via nested loops — O(n^2) instead of O(n). Tests whether the rubric enforces the efficiency constraint.",
+  source: "manual",
+  category: "competence",
   groundTruth: {
     correctness: "good",
     execution: "good",
